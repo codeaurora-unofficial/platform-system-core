@@ -573,6 +573,9 @@ case "$target" in
         # Set panic as hung and keep SLPI alive during panic
         echo 0 > /proc/sys/kernel/panic
         echo 1 > /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive
+
+        #making ssh to login as admin
+        setsebool -P ssh_sysadm_login 1
     ;;
 
     "msm8996pro" )
