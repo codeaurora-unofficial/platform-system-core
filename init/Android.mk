@@ -9,7 +9,7 @@ init_options += \
     -DALLOW_LOCAL_PROP_OVERRIDE=1 \
     -DALLOW_PERMISSIVE_SELINUX=1 \
     -DREBOOT_BOOTLOADER_ON_PANIC=1 \
-    -DDUMP_ON_UMOUNT_FAILURE=1
+    -DDUMP_ON_UMOUNT_FAILURE=0
 else
 init_options += \
     -DALLOW_LOCAL_PROP_OVERRIDE=0 \
@@ -85,6 +85,7 @@ LOCAL_SRC_FILES:= \
     builtins.cpp \
     devices.cpp \
     init.cpp \
+    init_first_stage.cpp \
     keychords.cpp \
     property_service.cpp \
     reboot.cpp \
@@ -141,6 +142,7 @@ LOCAL_MODULE := init_tests
 LOCAL_SRC_FILES := \
     init_parser_test.cpp \
     property_service_test.cpp \
+    service_test.cpp \
     util_test.cpp \
 
 LOCAL_SHARED_LIBRARIES += \
