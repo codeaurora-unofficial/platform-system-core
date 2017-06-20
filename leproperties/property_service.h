@@ -59,8 +59,6 @@
 
 #define UNUSED(x) (void)(x)
 
-#define MAX_CONN (32) // mximum number of connected clients
-
 typedef struct property_unit{
     unsigned char property_name[PROP_NAME_MAX];     // name of property
     unsigned char property_value[PROP_VALUE_MAX];   // string val of property
