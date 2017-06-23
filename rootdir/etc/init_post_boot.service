@@ -31,7 +31,7 @@ SourcePath=/etc/initscripts/init_post_boot
 Description=QTI Post Boot Service
 
 [Service]
-Type=forking
+Type=simple
 Restart=no
 TimeoutSec=5min
 IgnoreSIGPIPE=no
