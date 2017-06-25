@@ -136,7 +136,7 @@ case "$1" in
 start)
 echo -n "Starting init_qcom_post_boot: "
 if [ -f /sys/devices/soc0/machine ]; then
-    target=`cat /sys/devices/soc0/machine | tr [A-Z] [a-z]`
+    target=`cat /sys/devices/soc0/machine | tr [:upper:] [:lower:]`
 else
     target=`getprop ro.board.platform`
 fi
