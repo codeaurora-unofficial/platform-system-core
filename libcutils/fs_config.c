@@ -173,6 +173,7 @@ static const struct fs_path_config android_files[] = {
     { 00600, AID_ROOT,      AID_ROOT,      0, "system/etc/group-" },
     { 00600, AID_ROOT,      AID_ROOT,      0, "system/etc/gshadow" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/init.d/*" },
+    { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/ipk-postinsts/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/launch_adbd" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/mdev/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/network/if-down-up.d/*" },
@@ -250,6 +251,8 @@ static const struct fs_path_config android_files[] = {
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/data/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/etc/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/lib64/*" },
+
+    { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/share/qt5/*" },
 
     { 00644, AID_ROOT,      AID_ROOT,      0, "system/usr/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/bin/*" },
