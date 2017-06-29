@@ -375,6 +375,8 @@ int main(int argc, char **argv) {
     return adb_commandline(argc - 1, const_cast<const char**>(argv + 1));
 #else
     // adbd
+    signal(SIGINT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
     while (true) {
         static struct option opts[] = {
             {"root_seclabel", required_argument, nullptr, 's'},
