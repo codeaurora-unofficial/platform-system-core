@@ -27,7 +27,7 @@
 
 
 [Unit]
-SourcePath=/etc/init.d/init_debuggerd
+SourcePath=/etc/initscripts/init_debuggerd
 Description=debuggerd Service
 DefaultDependencies=no
 
@@ -39,5 +39,5 @@ IgnoreSIGPIPE=no
 KillMode=process
 GuessMainPID=no
 RemainAfterExit=yes
-ExecStart=/etc/init.d/init_debuggerd start
-ExecStop=/etc/init.d/init_debuggerd stop
+ExecStart=/etc/initscripts/init_debuggerd start
+ExecStop=/etc/initscripts/init_debuggerd stop
