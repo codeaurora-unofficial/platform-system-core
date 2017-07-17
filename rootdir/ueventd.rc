@@ -88,6 +88,7 @@ subsystem sound
 /dev/oncrpc/*             0660   root       system
 /dev/adsp/*               0660   system     audio
 /dev/snd/*                0660   system     audio
+/dev/hab                  0666   system     system
 /dev/mt9t013              0660   system     system
 /dev/msm_camera/*         0660   system     system
 /dev/akm8976_daemon       0640   compass    system
