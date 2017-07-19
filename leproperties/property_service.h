@@ -39,7 +39,7 @@
 #include "property_ops.h"
 
 #define PROP_FILE_DEFAULT_PATH      "/build.prop"
-#define PROP_FILE_PERSIST_PATH      "/data/persist/build.prop"
+#define PROP_FILE_PERSIST_PATH      "/etc/build.prop"
 #define PROP_TRIGGER                "/etc/proptrigger.sh"
 #define PROP_TRIGGER_CONF           "/etc/proptrigger.conf"
 

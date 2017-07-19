@@ -1,8 +1,8 @@
 [Unit]
 SourcePath=/sbin/leprop-service
 Description=leprop Service
-After=mount-data.service
-Requires=mount-data.service
+After=systemrw-build.prop.service
+Requires=systemrw-build.prop.service
 Before=persist-prop.service
 Requires=persist-prop.service
 
