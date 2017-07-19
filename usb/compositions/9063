@@ -118,6 +118,33 @@ run_9650() {
 	echo 1 > /sys/class/android_usb/android$num/enable
 }
 
+run_configfs() {
+	if [ $from_adb = "n" ]
+	then
+		pkill adbd
+		/etc/launch_adbd start
+		sleep 1
+	fi
+	cd /sys/kernel/config/usb_gadget/g1
+	rm configs/c*/f*
+	echo 9063 > idProduct
+	echo 05c6 > idVendor
+	echo 239 > bDeviceClass
+	echo 2 > bDeviceSubClass
+	echo 1 > bDeviceProtocol
+	echo "RNDIS" > configs/c.1/strings/0x409/configuration
+	echo "ECM" > configs/c.2/strings/0x409/configuration
+	echo "MBIM" > configs/c.3/strings/0x409/configuration
+	ln -s functions/gsi.rndis configs/c.1/f1
+	ln -s functions/gsi.ecm configs/c.2/f1
+	ln -s functions/gsi.mbim configs/c.3/f1
+	echo 0xA0 > configs/c.1/bmAttributes
+	echo 0xA0 > configs/c.2/bmAttributes
+	echo 0xA0 > configs/c.3/bmAttributes
+	echo "binding UDC with Gadget..." $1
+	echo $1 > UDC
+}
+
 case `source /sbin/usb/target` in
 	*9x15* )
 		run_9x15 &
@@ -139,6 +166,10 @@ case `source /sbin/usb/target` in
 		;;
 	*9650* )
 		run_9650 &
+		;;
+	*sdxpoorwills* )
+		udcname=`ls -1 /sys/class/udc | head -n 1`
+		run_configfs $udcname &
 		;;
 	* )
 		run_9650 &
