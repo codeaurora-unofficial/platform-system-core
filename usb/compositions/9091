@@ -52,7 +52,7 @@ run_9x35() {
 		pkill adbd
 	fi
 	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 9025 > /sys/class/android_usb/android$num/idProduct
+	echo 9091 > /sys/class/android_usb/android$num/idProduct
 	echo 05C6 > /sys/class/android_usb/android$num/idVendor
 	echo diag > /sys/class/android_usb/android0/f_diag/clients
 	echo smd > /sys/class/android_usb/android0/f_serial/transports
@@ -93,7 +93,7 @@ run_9650() {
 		pkill adbd
 	fi
 	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 9025 > /sys/class/android_usb/android$num/idProduct
+	echo 9091 > /sys/class/android_usb/android$num/idProduct
 	echo 05C6 > /sys/class/android_usb/android$num/idVendor
 	echo diag > /sys/class/android_usb/android0/f_diag/clients
 	echo smd > /sys/class/android_usb/android0/f_serial/transports
