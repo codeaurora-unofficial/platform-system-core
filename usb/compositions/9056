@@ -160,6 +160,28 @@ run_sdx20() {
 	fi
 }
 
+run_configfs() {
+	if [ $from_adb = "n" ]
+	then
+		pkill adbd
+		/etc/launch_adbd start
+		sleep 1
+	fi
+	cd /sys/kernel/config/usb_gadget/g1
+	rm configs/c*/f*
+	echo 0x05c6 > idVendor
+	echo 0x9056 > idProduct
+	echo "DIAG_ADB_SER_RMNET_MS_AUDIO" > configs/c.1/strings/0x409/configuration
+	ln -s functions/diag.diag configs/c.1/f1
+	ln -s functions/ffs.adb configs/c.1/f2
+	ln -s functions/cser.dun.0 configs/c.1/f3
+	ln -s functions/gsi.rmnet configs/c.1/f4
+	ln -s functions/mass_storage.0 configs/c.1/f5
+	ln -s functions/uac1.uac1 configs/c.1/f6
+	echo "binding UDC with Gadget..." $1
+	echo $1 > UDC
+}
+
 case `source /sbin/usb/target` in
 	*9x15* )
 		run_9x15 &
@@ -194,6 +216,10 @@ case `source /sbin/usb/target` in
 		;;
 	*sdx20* )
 		run_sdx20 &
+		;;
+	*sdxpoorwills* )
+		udcname=`ls -1 /sys/class/udc | head -n 1`
+		run_configfs $udcname &
 		;;
 	* )
 		run_9650 &
