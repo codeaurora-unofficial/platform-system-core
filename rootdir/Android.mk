@@ -59,7 +59,6 @@ SANITIZE_ASAN_OPTIONS_FOR := \
   ATFWD-daemon \
   audioserver \
   bridgemgrd \
-  cameraserver \
   cnd \
   debuggerd \
   debuggerd64 \
