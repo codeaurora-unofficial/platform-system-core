@@ -76,15 +76,23 @@ case "$1" in
 		mkdir g1
 		cd g1
 		mkdir strings/0x409
-		mkdir configs/b.1
-		mkdir configs/b.1/strings/0x409
+		mkdir configs/c.1
+		mkdir configs/c.1/strings/0x409
 		mkdir functions/mass_storage.0
+		mkdir functions/mass_storage.1
 		mkdir functions/ffs.adb
 		mkdir functions/diag.diag
 		mkdir functions/cser.dun.0
 		mkdir functions/cser.nmea.1
 		mkdir functions/rmnet_bam.rmnet
+		mkdir functions/gsi.rmnet
+		mkdir functions/gsi.rndis
+		mkdir functions/gsi.ecm
+		mkdir functions/gsi.mbim
+		mkdir functions/gsi.dpl
 		mkdir functions/ncm.0
+		mkdir functions/qdss.qdss
+		mkdir functions/uac1.uac1
 		echo "$serialno" > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
 		echo "$socplatform" > strings/0x409/product
