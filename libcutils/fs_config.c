@@ -227,6 +227,7 @@ static const struct fs_path_config android_files[] = {
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/sbin/halt.sysvinit" },
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/sbin/shutdown.sysvinit" },
 
+    { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/tests/*" },
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/usr/bin/chage" },
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/usr/bin/chfn.shadow" },
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/usr/bin/chsh.shadow" },
