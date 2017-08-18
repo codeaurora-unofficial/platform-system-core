@@ -260,7 +260,7 @@ bool save_persist_ds_to_file(void)
                 LOG("Writing to persist %s \n", stringtowrite);
 
                 filewrite_status = fputs(stringtowrite, fp);
-                if (filewrite_status < 0 || filewrite_status == EOF)
+                if (filewrite_status < 0)
                 {
                     retval = false;
                     break;
@@ -325,7 +325,7 @@ property_db* pull_one_line_data(const char* line)
     {
         LOG("[%s] => line pulled: %s", __func__,curr_line_ptr);
 
-        if(extracted_val != NULL)
+        if(delimiter != NULL)
         {
             switch (iterator)
             {
