@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef _LIBUNWINDSTACK_LOG_H
-#define _LIBUNWINDSTACK_LOG_H
+#ifndef LIBMEMUNREACHABLE_BINDER_H_
+#define LIBMEMUNREACHABLE_BINDER_H_
 
-#include <stdint.h>
+#include "Allocator.h"
 
-void log_to_stdout(bool enable);
-void log(uint8_t indent, const char* format, ...);
+namespace android {
 
-#endif  // _LIBUNWINDSTACK_LOG_H
+bool BinderReferences(allocator::vector<uintptr_t>& refs);
+
+}  // namespace android
+
+#endif  // LIBMEMUNREACHABLE_BINDER_H_

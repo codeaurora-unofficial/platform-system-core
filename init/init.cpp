@@ -391,7 +391,10 @@ static int set_mmap_rnd_bits_action(const std::vector<std::string>& args)
     int ret = -1;
 
     /* values are arch-dependent */
-#if defined(__aarch64__)
+#if defined(USER_MODE_LINUX)
+    /* uml does not support mmap_rnd_bits */
+    ret = 0;
+#elif defined(__aarch64__)
     /* arm64 supports 18 - 33 bits depending on pagesize and VA_SIZE */
     if (set_mmap_rnd_bits_min(33, 24, false)
             && set_mmap_rnd_bits_min(16, 16, true)) {
@@ -510,7 +513,7 @@ static void process_kernel_dt() {
         return;
     }
 
-    std::unique_ptr<DIR, int (*)(DIR*)> dir(opendir(kAndroidDtDir.c_str()), closedir);
+    std::unique_ptr<DIR, int (*)(DIR*)> dir(opendir(get_android_dt_dir().c_str()), closedir);
     if (!dir) return;
 
     std::string dt_file;
@@ -520,7 +523,7 @@ static void process_kernel_dt() {
             continue;
         }
 
-        std::string file_name = kAndroidDtDir + dp->d_name;
+        std::string file_name = get_android_dt_dir() + dp->d_name;
 
         android::base::ReadFileToString(file_name, &dt_file);
         std::replace(dt_file.begin(), dt_file.end(), ',', '.');

@@ -14,19 +14,16 @@
  * limitations under the License.
  */
 
-#include <nvram/hal/nvram_device_adapter.h>
+#ifndef _LIBUNWINDSTACK_LOG_H
+#define _LIBUNWINDSTACK_LOG_H
 
-#include "trusty_nvram_implementation.h"
+#include <stdint.h>
 
-extern "C" int trusty_nvram_open(const hw_module_t* module,
-                                 const char* device_id,
-                                 hw_device_t** device_ptr) {
-  if (strcmp(NVRAM_HARDWARE_DEVICE_ID, device_id) != 0) {
-    return -EINVAL;
-  }
+namespace unwindstack {
 
-  nvram::NvramDeviceAdapter* adapter = new nvram::NvramDeviceAdapter(
-      module, new nvram::TrustyNvramImplementation);
-  *device_ptr = adapter->as_device();
-  return 0;
-}
+void log_to_stdout(bool enable);
+void log(uint8_t indent, const char* format, ...);
+
+}  // namespace unwindstack
+
+#endif  // _LIBUNWINDSTACK_LOG_H
