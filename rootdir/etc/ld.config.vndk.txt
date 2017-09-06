@@ -3,14 +3,19 @@
 # Bionic loader config file.
 #
 
-# Don't change the order here.
+# Don't change the order here. The first pattern that matches with the
+# absolution path of an executable is selected.
 dir.system = /system/bin/
 dir.system = /system/xbin/
 dir.vendor = /vendor/bin/
-dir.test = /data/nativetest/
-dir.test = /data/nativetest64/
-dir.test = /data/benchmarktest/
-dir.test = /data/benchmarktest64/
+dir.vendor = /data/nativetest/vendor
+dir.vendor = /data/nativetest64/vendor
+dir.vendor = /data/benchmarktest/vendor
+dir.vendor = /data/benchmarktest64/vendor
+dir.system = /data/nativetest
+dir.system = /data/nativetest64
+dir.system = /data/benchmarktest
+dir.system = /data/benchmarktest64
 
 [system]
 additional.namespaces = sphal,vndk,rs
@@ -64,10 +69,10 @@ namespace.sphal.asan.permitted.paths = /data/asan/vendor/${LIB}:/vendor/${LIB}
 namespace.sphal.links = default,vndk,rs
 
 # WARNING: only NDK libs can be listed here.
-namespace.sphal.link.default.shared_libs = libc.so:libm.so:libdl.so:libstdc++.so:liblog.so:libnativewindow.so:libEGL.so:libsync.so:libGLESv1_CM.so:libGLESv2.so:libvndksupport.so:libz.so
+namespace.sphal.link.default.shared_libs = libEGL.so:libm.so:libandroid_net.so:libvndksupport.so:libc.so:libGLESv1_CM.so:liblog.so:libsync.so:libnativewindow.so:libGLESv3.so:libdl.so:libGLESv2.so
 
 # WARNING: only VNDK-SP libs can be listed here. DO NOT EDIT this line.
-namespace.sphal.link.vndk.shared_libs = android.hardware.renderscript@1.0.so:android.hardware.graphics.allocator@2.0.so:android.hardware.graphics.mapper@2.0.so:android.hardware.graphics.common@1.0.so:android.hidl.memory@1.0.so:libhwbinder.so:libbase.so:libcutils.so:libhardware.so:libhidlbase.so:libhidlmemory.so:libhidltransport.so:libion.so:libutils.so:libc++.so:libz.so
+namespace.sphal.link.vndk.shared_libs = libhardware.so:libc++.so:libhidlbase.so:libhwbinder.so:libhidltransport.so:libbase.so:libhidlmemory.so:libRS.so:libRSDriver.so:libcutils.so:libion.so:libRSCpuRef.so:android.hardware.graphics.common@1.0.so:android.hardware.graphics.mapper@2.0.so:android.hidl.memory@1.0.so:libbcinfo.so:android.hardware.graphics.allocator@2.0.so:android.hardware.renderscript@1.0.so:libutils.so:libz.so
 
 # Renderscript gets separate namespace
 namespace.sphal.link.rs.shared_libs = libRS_internal.so
@@ -89,8 +94,8 @@ namespace.rs.asan.search.paths = /data/asan/vendor/${LIB}/vndk-sp:/vendor/${LIB}
 namespace.rs.asan.permitted.paths = /data/asan/vendor/${LIB}:/vendor/${LIB}:/data
 
 namespace.rs.links = default,vndk
-namespace.rs.link.default.shared_libs = libc.so:libm.so:libdl.so:libstdc++.so:liblog.so:libnativewindow.so:libEGL.so:libsync.so:libGLESv1_CM.so:libGLESv2.so:libmediandk.so:libvndksupport.so:libft2.so
-namespace.rs.link.vndk.shared_libs = android.hardware.renderscript@1.0.so:android.hardware.graphics.allocator@2.0.so:android.hardware.graphics.mapper@2.0.so:android.hardware.graphics.common@1.0.so:android.hidl.memory@1.0.so:libhwbinder.so:libbase.so:libcutils.so:libhardware.so:libhidlbase.so:libhidlmemory.so:libhidltransport.so:libion.so:libutils.so:libc++.so:libz.so
+namespace.rs.link.default.shared_libs = libEGL.so:libm.so:libandroid_net.so:libvndksupport.so:libc.so:libGLESv1_CM.so:liblog.so:libsync.so:libnativewindow.so:libGLESv3.so:libdl.so:libGLESv2.so:libmediandk.so:libft2.so
+namespace.rs.link.vndk.shared_libs = libhardware.so:libc++.so:libhidlbase.so:libhwbinder.so:libhidltransport.so:libbase.so:libhidlmemory.so:libRS.so:libRSDriver.so:libcutils.so:libion.so:libRSCpuRef.so:android.hardware.graphics.common@1.0.so:android.hardware.graphics.mapper@2.0.so:android.hidl.memory@1.0.so:libbcinfo.so:android.hardware.graphics.allocator@2.0.so:android.hardware.renderscript@1.0.so:libutils.so:libz.so
 
 ###############################################################################
 # "vndk" namespace
@@ -108,7 +113,7 @@ namespace.vndk.asan.permitted.paths = /data/asan/vendor/${LIB}/hw:/vendor/${LIB}
 # to the default namespace. This is possible since their ABI is stable across
 # Android releases.
 namespace.vndk.links = default
-namespace.vndk.link.default.shared_libs = android.hidl.memory@1.0-impl.so:libc.so:libm.so:libdl.so:libstdc++.so:liblog.so:libnativewindow.so:libEGL.so:libsync.so:libvndksupport.so
+namespace.vndk.link.default.shared_libs = libEGL.so:libm.so:libandroid_net.so:libvndksupport.so:libc.so:libGLESv1_CM.so:liblog.so:libsync.so:libnativewindow.so:libGLESv3.so:libdl.so:libGLESv2.so
 
 ###############################################################################
 # Namespace config for vendor processes. In O, no restriction is enforced for
@@ -117,16 +122,36 @@ namespace.vndk.link.default.shared_libs = android.hidl.memory@1.0-impl.so:libc.s
 # (LL-NDK only) access.
 ###############################################################################
 [vendor]
-namespace.default.isolated = false
-namespace.default.search.paths = /vendor/${LIB}/hw:/vendor/${LIB}/egl:/vendor/${LIB}:/system/${LIB}/vndk:/vendor/${LIB}/vndk-sp:/system/${LIB}/vndk-sp:/system/${LIB}
-
-namespace.default.asan.search.paths = /data/asan/vendor/${LIB}/hw:/vendor/${LIB}/hw:/data/asan/vendor/${LIB}/egl:/vendor/${LIB}/egl:/data/asan/vendor/${LIB}:/vendor/${LIB}:/data/asan/system/${LIB}/vndk:/system/${LIB}/vndk:/data/asan/vendor/${LIB}/vndk-sp:/vendor/${LIB}/vndk-sp:/data/asan/system/${LIB}/vndk-sp:/system/${LIB}/vndk-sp:/data/asan/system/${LIB}:/system/${LIB}
+additional.namespaces = system
 
 ###############################################################################
-# Namespace config for tests. No VNDK restriction is enforced for these tests.
+# "default" namespace
+#
+# Vendor-side code runs in this namespace.
 ###############################################################################
-[test]
-namespace.default.isolated = false
-namespace.default.search.paths = /vendor/${LIB}:/vendor/${LIB}/vndk-sp:/system/${LIB}/vndk-sp:/system/${LIB}
+namespace.default.isolated = true
+namespace.default.visible = true
 
-namespace.default.asan.search.paths = /data/asan/vendor/${LIB}:/vendor/${LIB}:/data/asan/vendor/${LIB}/vndk-sp:/vendor/${LIB}/vndk-sp:/data/asan/system/${LIB}/vndk-sp:/system/${LIB}/vndk-sp:/data/asan/system/${LIB}:/system/${LIB}
+namespace.default.search.paths = /vendor/${LIB}/hw:/vendor/${LIB}/egl:/vendor/${LIB}:/vendor/${LIB}/vndk:/system/${LIB}/vndk:/vendor/${LIB}/vndk-sp:/system/${LIB}/vndk-sp
+namespace.default.permitted.paths = /vendor:/system/${LIB}/vndk:/system/${LIB}/vndk-sp
+
+namespace.default.asan.search.paths = /data/asan/vendor/${LIB}/hw:/vendor/${LIB}/hw:/data/asan/vendor/${LIB}/egl:/vendor/${LIB}/egl:/data/asan/vendor/${LIB}:/vendor/${LIB}:/data/asan/vendor/${LIB}/vndk:/vendor/${LIB}/vndk:/data/asan/system/${LIB}/vndk:/system/${LIB}/vndk:/data/asan/vendor/${LIB}/vndk-sp:/vendor/${LIB}/vndk-sp:/data/asan/system/${LIB}/vndk-sp:/system/${LIB}/vndk-sp
+namespace.default.asan.permitted.paths = /data/asan/vendor:/vendor:/data/asan/system/${LIB}/vndk:/system/${LIB}/vndk:/data/asan/system/${LIB}/vndk-sp:/system/${LIB}/vndk-sp
+
+namespace.default.links = system
+namespace.default.link.system.shared_libs = libEGL.so:libm.so:libandroid_net.so:libvndksupport.so:libc.so:libGLESv1_CM.so:liblog.so:libsync.so:libnativewindow.so:libGLESv3.so:libdl.so:libGLESv2.so:libmedia.so:libandroid_runtime.so
+# libmedia.so must be removed after we have fix for lib-dplmedia.so (b/64427765)
+# libandroid_runtime.so must be removed after we have a fix for qseeproxydaemon (b/64820887)
+
+###############################################################################
+# "system" namespace
+#
+# This is for vendor process to use LL-NDK in system partition.
+###############################################################################
+namespace.system.isolated = false
+namespace.system.search.paths = /system/${LIB}
+namespace.system.permitted.paths = /system/${LIB}
+
+namespace.system.asan.search.paths = /data/asan/system/${LIB}:/system/${LIB}
+namespace.system.asan.permitted.paths = /data/asan/system/${LIB}:/system/${LIB}
+
