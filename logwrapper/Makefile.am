@@ -13,7 +13,7 @@ logwrapper_SOURCES := logwrapper.c
 logwrapper_CFLAGS  := -I$(top_srcdir)/include
 logwrapper_CFLAGS  += -I$(top_srcdir)/logwrapper/include
 logwrapper_LDADD   := liblogwrap.la
-logwrapper_LDADD   += -lcutils -llog
+logwrapper_LDADD   += -lcutils -llog -lpthread
 
 # Export headers
 logwrapper_includedir=$(includedir)/logwrapper

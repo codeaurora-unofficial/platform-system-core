@@ -17,7 +17,38 @@
 #ifndef _LOGD_LOG_STATISTICS_H__
 #define _LOGD_LOG_STATISTICS_H__
 
+#ifndef GCC_VERSION
+#define GCC_VERSION (__GNUC__ * 10000		\
+                     + __GNUC_MINOR__ * 100	\
+                     + __GNUC_PATCHLEVEL__)
+#endif
+
+// GNU Compiler Collection Version: 5.2 ==> 50200
+#if GCC_VERSION >= 50200
+#include <bits/stl_algobase.h>
+#include <bits/allocator.h>
+#include <bits/stl_construct.h>
+#include <bits/stl_uninitialized.h>
+#include <bits/stl_tempbuf.h>
+#include <bits/stl_raw_storage_iter.h>
+#include <exception>            // std::exception
+#include <typeinfo>             // std::type_info in get_deleter
+#include <iosfwd>               // std::basic_ostream
+#include <ext/atomicity.h>
+#include <ext/concurrence.h>
+#include <bits/functexcept.h>
+#include <bits/stl_function.h>  // std::less
+#include <bits/uses_allocator.h>
+#include <type_traits>
+#include <functional>
+#include <debug/debug.h>
+#include <bits/unique_ptr.h>
+#include <bits/shared_ptr.h>
+#include <backward/auto_ptr.h>
+#else
 #include <memory>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>

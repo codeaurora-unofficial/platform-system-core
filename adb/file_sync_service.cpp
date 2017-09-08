@@ -342,7 +342,9 @@ static int do_send(int s, char *path, char *buffer)
         /* Don't delete files before copying if they are not "regular" */
         do_unlink = lstat(path, &st) || S_ISREG(st.st_mode) || S_ISLNK(st.st_mode);
         if (do_unlink) {
-            adb_unlink(path);
+            //adb_unlink(path);
+             FILE* fp = fopen(path,"w");
+             if (fp !=NULL) fclose (fp);
         }
     }
 

@@ -459,15 +459,17 @@ case "$target" in
      echo mem > /sys/power/autosleep
      ;;
 
-    "msm8996" | "apq8096" )
+    "msm8996" | "apq8096" | "msm8996pro" )
         # disable thermal bcl hotplug to switch governor
         echo 0 > /sys/module/msm_thermal/core_control/enabled
-        echo -n disable > /sys/devices/soc/soc:qcom,bcl/mode
-        bcl_hotplug_mask=`cat /sys/devices/soc/soc:qcom,bcl/hotplug_mask`
-        echo 0 > /sys/devices/soc/soc:qcom,bcl/hotplug_mask
-        bcl_soc_hotplug_mask=`cat /sys/devices/soc/soc:qcom,bcl/hotplug_soc_mask`
-        echo 0 > /sys/devices/soc/soc:qcom,bcl/hotplug_soc_mask
-        echo -n enable > /sys/devices/soc/soc:qcom,bcl/mode
+        if [ -f /sys/devices/soc/soc:qcom,bcl/mode ] && [ -f /sys/devices/soc/soc:qcom,bcl/hotplug_mask ]; then
+            echo -n disable > /sys/devices/soc/soc:qcom,bcl/mode
+            bcl_hotplug_mask=`cat /sys/devices/soc/soc:qcom,bcl/hotplug_mask`
+            echo 0 > /sys/devices/soc/soc:qcom,bcl/hotplug_mask
+            bcl_soc_hotplug_mask=`cat /sys/devices/soc/soc:qcom,bcl/hotplug_soc_mask`
+            echo 0 > /sys/devices/soc/soc:qcom,bcl/hotplug_soc_mask 
+            echo -n enable > /sys/devices/soc/soc:qcom,bcl/mode
+        fi
 
         # Enable Adaptive LMK
         echo 1 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
@@ -504,10 +506,13 @@ case "$target" in
         echo 1 > /sys/devices/system/cpu/cpu2/cpufreq/interactive/ignore_hispeed_on_notif
         # re-enable thermal and BCL hotplug
         echo 1 > /sys/module/msm_thermal/core_control/enabled
-        echo -n disable > /sys/devices/soc/soc:qcom,bcl/mode
-        echo $bcl_hotplug_mask > /sys/devices/soc/soc:qcom,bcl/hotplug_mask
-        echo $bcl_soc_hotplug_mask > /sys/devices/soc/soc:qcom,bcl/hotplug_soc_mask
-        echo -n enable > /sys/devices/soc/soc:qcom,bcl/mode
+        if [ -f /sys/devices/soc/soc:qcom,bcl/mode ] && [ -f /sys/devices/soc/soc:qcom,bcl/hotplug_mask ]; then
+            echo -n disable > /sys/devices/soc/soc:qcom,bcl/mode
+            echo $bcl_hotplug_mask > /sys/devices/soc/soc:qcom,bcl/hotplug_mask
+            echo $bcl_soc_hotplug_mask > /sys/devices/soc/soc:qcom,bcl/hotplug_soc_mask
+            echo -n enable > /sys/devices/soc/soc:qcom,bcl/mode
+        fi
+
         # input boost configuration
         echo "0:1324800 2:1324800" > /sys/module/cpu_boost/parameters/input_boost_freq
         echo 40 > /sys/module/cpu_boost/parameters/input_boost_ms
@@ -570,34 +575,15 @@ case "$target" in
         echo 5 > /proc/sys/vm/dirty_background_ratio
 
         # Set panic as hung and keep SLPI alive during panic
-        echo 0 > /proc/sys/kernel/panic
-        echo 1 > /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive
+        if [ -f /proc/sys/kernel/panic ]; then
+                echo 0 > /proc/sys/kernel/panic
+        fi
+        if [ -f /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive ]; then
+                echo 1 > /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive
+        fi
 
         #making ssh to login as admin
         setsebool -P ssh_sysadm_login 1
-    ;;
-
-    "msm8996pro" )
-        soc_revision=`cat /sys/devices/soc0/revision`
-        if [ "$soc_revision" == "2.0" ]; then
-            #Disable suspend for v2.0
-            echo pwr_dbg > /sys/power/wake_lock
-        elif [ "$soc_revision" == "2.1" ]; then
-            # Enable C4.D4.E4.M3 LPM modes
-            # Disable D3 state
-            echo 0 > /sys/module/lpm_levels/system/pwr/pwr-l2-gdhs/idle_enabled
-            echo 0 > /sys/module/lpm_levels/system/perf/perf-l2-gdhs/idle_enabled
-            # Disable DEF-FPC mode
-            echo N > /sys/module/lpm_levels/system/pwr/cpu0/fpc-def/idle_enabled
-            echo N > /sys/module/lpm_levels/system/pwr/cpu1/fpc-def/idle_enabled
-            echo N > /sys/module/lpm_levels/system/perf/cpu2/fpc-def/idle_enabled
-            echo N > /sys/module/lpm_levels/system/perf/cpu3/fpc-def/idle_enabled
-        else
-            # Enable all LPMs by default
-            # This will enable C4, D4, D3, E4 and M3 LPMs
-            echo N > /sys/module/lpm_levels/parameters/sleep_disabled
-        fi
-        echo N > /sys/module/lpm_levels/parameters/sleep_disabled
     ;;
 esac
 
