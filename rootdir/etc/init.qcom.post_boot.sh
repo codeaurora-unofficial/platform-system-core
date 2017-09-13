@@ -459,7 +459,7 @@ case "$target" in
      echo mem > /sys/power/autosleep
      ;;
 
-    "msm8996" | "apq8096" | "msm8996pro" )
+    "msm8996" | "apq8096" | "msm8996pro" | "apq8096pro")
         # disable thermal bcl hotplug to switch governor
         echo 0 > /sys/module/msm_thermal/core_control/enabled
         if [ -f /sys/devices/soc/soc:qcom,bcl/mode ] && [ -f /sys/devices/soc/soc:qcom,bcl/hotplug_mask ]; then
