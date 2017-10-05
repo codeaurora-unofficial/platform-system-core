@@ -172,7 +172,7 @@ static const struct fs_path_config android_files[] = {
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/disconnect" },
     { 00600, AID_ROOT,      AID_ROOT,      0, "system/etc/group-" },
     { 00600, AID_ROOT,      AID_ROOT,      0, "system/etc/gshadow" },
-    { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/init.d/*" },
+    { 00750, AID_ROOT,      AID_ROOT,      0, "system/etc/init.d/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/ipk-postinsts/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/launch_adbd" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/mdev/*" },
