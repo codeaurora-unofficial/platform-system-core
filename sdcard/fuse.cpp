@@ -526,7 +526,7 @@ static int fuse_reply_entry(struct fuse* fuse, __u64 unique,
     memset(&out, 0, sizeof(out));
     attr_from_stat(fuse, &out.attr, &s, node);
     out.attr_valid = 10;
-    out.entry_valid = 0;
+    out.entry_valid = 10;
     out.nodeid = node->nid;
     out.generation = node->gen;
     pthread_mutex_unlock(&fuse->global->lock);
