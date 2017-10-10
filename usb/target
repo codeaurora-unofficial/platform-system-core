@@ -69,6 +69,9 @@ case `cat ${TARGET_DIR}` in
 	*apq8098* )
 		res="8098";
 		;;
+	*sdxpoorwills* )
+		res="sdxpoorwills";
+		;;
 	* )
 		res="none"
 		;;
