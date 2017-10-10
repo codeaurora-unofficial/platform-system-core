@@ -201,7 +201,12 @@ run_configfs() {
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
-	rm configs/c*/f*
+	rm configs/c*/f* 2> /dev/null
+	rm -rf configs/c.2 configs/c.3 2> /dev/null
+	mkdir configs/c.2
+	mkdir configs/c.2/strings/0x409
+	mkdir configs/c.3
+	mkdir configs/c.3/strings/0x409
 	echo 05c6 > idVendor
 	echo 9064 > idProduct
 	echo 239 > bDeviceClass

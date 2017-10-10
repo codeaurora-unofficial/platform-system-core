@@ -103,7 +103,10 @@ run_9650() {
 run_configfs() {
 	pkill adbd
 	cd /sys/kernel/config/usb_gadget/g1
-	rm configs/c*/f*
+	rm configs/c*/f* 2> /dev/null
+	rm -rf configs/c.2 configs/c.3 2> /dev/null
+	mkdir configs/c.2
+	mkdir configs/c.2/strings/0x409
 	echo 0x05c6 > idVendor
 	echo 0x9057 > idProduct
 	echo "RNDIS" > configs/c.1/strings/0x409/configuration
