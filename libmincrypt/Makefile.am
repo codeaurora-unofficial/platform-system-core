@@ -9,7 +9,7 @@ libmincrypt_la_LDFLAGS := -lm -lpthread
 # Export headers
 mincrypt_includedir=$(includedir)/mincrypt
 mincrypt_include_HEADERS := @core_incdir@/mincrypt/dsa_sig.h
-mincrypt_include_HEADERS := @core_incdir@/mincrypt/hash-internal.h
+mincrypt_include_HEADERS += @core_incdir@/mincrypt/hash-internal.h
 mincrypt_include_HEADERS += @core_incdir@/mincrypt/p256.h
 mincrypt_include_HEADERS += @core_incdir@/mincrypt/p256_ecdsa.h
 mincrypt_include_HEADERS += @core_incdir@/mincrypt/rsa.h
