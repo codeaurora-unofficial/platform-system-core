@@ -13,7 +13,9 @@ ACLOCAL_AMFLAGS = -I m4
 
 ### Build libsparse library
 
-libsparse_h_sources = include/sparse/sparse.h
+libsparse_h_sources = include/sparse/sparse.h \
+        sparse_crc32.h
+
 libsparse_c_sources := append2simg.c \
         backed_block.c \
         output_file.c \
