@@ -725,7 +725,7 @@ ret:
     keychord_init();
     return 0;
 }
-
+*/
 static int console_init_action(int nargs, char **args)
 {
     char console[PROP_VALUE_MAX];
@@ -762,7 +762,7 @@ static int console_init_action(int nargs, char **args)
 
     return 0;
 }
-*/
+
 static void import_kernel_nv(char *name, bool for_emulator)
 {
     char *value = strchr(name, '=');
@@ -1093,7 +1093,7 @@ int main(int argc, char** argv) {
     queue_builtin_action(wait_for_coldboot_done_action, "wait_for_coldboot_done");
     // ... so that we can start queuing up actions that require stuff from /dev.
     queue_builtin_action(mix_hwrng_into_linux_rng_action, "mix_hwrng_into_linux_rng");
-
+    queue_builtin_action(console_init_action, "console_init");
        // Trigger all the boot actions to get us started.
     action_for_each_trigger("init", action_add_queue_tail);
 
