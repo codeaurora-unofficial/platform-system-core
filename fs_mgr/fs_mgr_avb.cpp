@@ -487,7 +487,7 @@ FsManagerAvbUniquePtr FsManagerAvbHandle::DoOpen(FsManagerAvbOps* avb_ops) {
     }
 
     AvbSlotVerifyResult verify_result = avb_ops->AvbSlotVerify(
-        fs_mgr_get_slot_suffix(), avb_verifier->IsDeviceUnlocked(), &avb_handle->avb_slot_data_);
+        fs_mgr_get_slot_suffix(), fs_mgr_is_device_unlocked(), &avb_handle->avb_slot_data_);
 
     // Only allow two verify results:
     //   - AVB_SLOT_VERIFY_RESULT_OK.
@@ -506,7 +506,7 @@ FsManagerAvbUniquePtr FsManagerAvbHandle::DoOpen(FsManagerAvbOps* avb_ops) {
             avb_handle->status_ = kFsManagerAvbHandleSuccess;
             break;
         case AVB_SLOT_VERIFY_RESULT_ERROR_VERIFICATION:
-            if (!avb_verifier->IsDeviceUnlocked()) {
+            if (!fs_mgr_is_device_unlocked()) {
                 LERROR << "ERROR_VERIFICATION isn't allowed when the device is LOCKED";
                 return nullptr;
             }
