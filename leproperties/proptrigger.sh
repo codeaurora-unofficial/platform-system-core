@@ -28,15 +28,40 @@
 #
 
 case "$1" in
-"qmmf.tnr.on")
+"qmmf.power.hint.on")
     case "$2" in
     "true" )
         echo 0 > /sys/devices/system/cpu/cpufreq/interactive/use_migration_notif
         echo 0 > /sys/devices/system/cpu/cpufreq/interactive/use_sched_load
+        echo "85 1401600:95 2016000:99" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
+        echo 40000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
+
+        for cpu_io_percent in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent
+        do
+                echo 50 > $cpu_io_percent
+        done
+
+        for cpu_sample_ms in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/sample_ms
+        do
+                echo 10 > $cpu_sample_ms
+        done
         ;;
     *)
         echo 1 > /sys/devices/system/cpu/cpufreq/interactive/use_migration_notif
         echo 1 > /sys/devices/system/cpu/cpufreq/interactive/use_sched_load
+        echo "85 1401600:90 1958400:95" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
+        echo 20000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
+
+        for cpu_io_percent in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent
+        do
+                echo 34 > $cpu_io_percent
+        done
+
+        for cpu_sample_ms in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/sample_ms
+        do
+                echo 4 > $cpu_sample_ms
+        done
+
         ;;
     esac
     ;;
