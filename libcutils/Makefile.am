@@ -118,6 +118,10 @@ cutils_sys_includedir=$(includedir)/cutils/sys
 cutils_sys_include_HEADERS := @core_incdir@/sys/capability.h
 cutils_sys_include_HEADERS += @core_incdir@/sys/system_properties.h
 
+privateheaders_includedir=$(includedir)/private
+privateheaders_include_HEADERS := @core_incdir@/private/android_filesystem_config.h
+privateheaders_include_HEADERS += @core_incdir@/private/android_filesystem_capability.h
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libcutils.pc
 EXTRA_DIST = $(pkgconfig_DATA)
