@@ -84,6 +84,7 @@ static bool enable_pressure_upgrade;
 static int64_t upgrade_pressure;
 static int64_t downgrade_pressure;
 static bool is_go_device;
+static bool ulmk_memcg;
 
 /* control socket listen and data */
 static int ctrl_lfd;
@@ -843,7 +844,11 @@ static int init(void) {
     maxevents++;
 
     has_inkernel_module = !access(INKERNEL_MINFREE_PATH, W_OK);
-    use_inkernel_interface = has_inkernel_module && !is_go_device;
+    if (ulmk_memcg) {
+        use_inkernel_interface = has_inkernel_module && !is_go_device;
+    } else {
+        use_inkernel_interface = has_inkernel_module;
+    }
 
     if (use_inkernel_interface) {
         ALOGI("Using in-kernel low memory killer interface");
@@ -899,6 +904,7 @@ int main(int argc __unused, char **argv __unused) {
     upgrade_pressure = (int64_t)property_get_int32("ro.lmk.upgrade_pressure", 50);
     downgrade_pressure = (int64_t)property_get_int32("ro.lmk.downgrade_pressure", 60);
     is_go_device = property_get_bool("ro.config.low_ram", false);
+    ulmk_memcg = property_get_bool("ro.vendor.qti.config.ulmk_memcg", true);
 
     mlockall(MCL_FUTURE);
     sched_setscheduler(0, SCHED_FIFO, &param);
