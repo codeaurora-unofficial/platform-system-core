@@ -19,6 +19,7 @@
 
 #include <inttypes.h>
 #include <stdint.h>
+#include <ucontext.h>
 
 #include <string>
 #include <vector>
@@ -47,9 +48,6 @@ struct backtrace_frame_data_t {
 #if defined(__APPLE__)
 struct __darwin_ucontext;
 typedef __darwin_ucontext ucontext_t;
-#else
-struct ucontext;
-typedef ucontext ucontext_t;
 #endif
 
 class Backtrace {
