@@ -5,9 +5,6 @@ systemheaders_include_HEADERS += $(top_srcdir)/include/system/graphics.h
 systemheaders_include_HEADERS += $(top_srcdir)/include/system/thread_defs.h
 systemheaders_include_HEADERS += $(top_srcdir)/include/system/window.h
 
-privateheaders_includedir=$(includedir)/private
-privateheaders_include_HEADERS := $(top_srcdir)/include/private/android_filesystem_config.h
-
 sysheaders_includedir=$(includedir)/sys
 sysheaders_include_HEADERS := $(top_srcdir)/include/sys/system_properties.h
 
