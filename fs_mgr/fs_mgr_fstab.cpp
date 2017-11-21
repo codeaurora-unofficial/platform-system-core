@@ -840,7 +840,9 @@ int fs_mgr_is_nonremovable(const struct fstab_rec *fstab)
 
 int fs_mgr_is_verified(const struct fstab_rec *fstab)
 {
-    return fstab->fs_mgr_flags & MF_VERIFY;
+    PERROR << "fs_mgr_is_verified '" << fstab->fs_mgr_flags <<"'";
+    return false;
+    //return fstab->fs_mgr_flags & MF_VERIFY;
 }
 
 int fs_mgr_is_avb(const struct fstab_rec *fstab)
