@@ -36,13 +36,20 @@ case "$1" in
   start)
         echo -n "Starting logd: "
         # /dev/socket
-        if [ ! -d /dev/socket ]; then
-            mkdir /dev/socket
-            chmod 777 /dev/socket
-        fi
+        mkdir -p /dev/socket
         echo 600 > /proc/sys/net/unix/max_dgram_qlen
-        chown 5002:5002 /etc/build.prop
+
         start-stop-daemon -c logd -S -b -a /sbin/logd
+
+        #Workaround. Need to find a better solution to set the mode for sockets.
+        #Already investigated starting from inittab, but even then mdev rules did not help.
+        while [ ! -e /dev/socket/logd ]; do sleep 1; done
+        chmod 0666 /dev/socket/logd
+        while [ ! -e /dev/socket/logdr ]; do sleep 1; done
+        chmod 0666 /dev/socket/logdr
+        while [ ! -e /dev/socket/logdw ]; do sleep 1; done
+        chmod 0222 /dev/socket/logdw
+
         echo "done"
         ;;
   stop)
