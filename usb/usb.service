@@ -29,7 +29,7 @@
 [Unit]
 SourcePath=/etc/initscripts/usb
 Description=usb Service
-After=mount-data.service
+After=mount-data.service persist-prop.service
 Requires=mount-data.service
 
 [Service]
