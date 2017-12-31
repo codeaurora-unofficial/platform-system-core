@@ -48,6 +48,14 @@ int __android_log_buf_write(int bufID, int prio, const char *tag, const char *ms
     return 0;
 }
 
+int __android_log_vprint(int prio, const char *tag, const char *fmt, va_list ap)
+{
+    char buf[LOG_BUF_SIZE];
+
+    vsnprintf(buf, LOG_BUF_SIZE, fmt, ap);
+
+    return __android_log_write(prio, tag, buf);
+}
 
 int __android_log_print(int prio, const char *tag, const char *fmt, ...)
 {
