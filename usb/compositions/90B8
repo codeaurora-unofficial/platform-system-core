@@ -79,7 +79,16 @@ run_configfs() {
 	echo 0x90B8 > idProduct
 	echo "DIAG_SER_RMNET_DPL_ADB" > configs/c.1/strings/0x409/configuration
 	ln -s functions/diag.diag configs/c.1/f1
-	ln -s functions/cser.dun.0 configs/c.1/f2
+	if [ -f /data/usb/softap_w_dun ]
+	then
+		SOFTAP_W_DUN=`cat /data/usb/softap_w_dun`
+	fi
+	if [ "$SOFTAP_W_DUN" == "Y" ]
+	then
+		ln -s functions/gser.0 configs/c.1/f2
+	else
+		ln -s functions/cser.dun.0 configs/c.1/f2
+	fi
 	ln -s functions/gsi.rmnet configs/c.1/f3
 	ln -s functions/gsi.dpl configs/c.1/f4
 	ln -s functions/ffs.adb configs/c.1/f5
