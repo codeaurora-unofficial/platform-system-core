@@ -146,6 +146,13 @@ case "$1" in
          esac
 
          case "$soc_id" in
+         "334" )
+                echo -n "Starting powerconfig for SDX24: "
+                echo Y > /sys/module/lpm_levels/parameters/sleep_disabled
+                ;;
+         esac
+
+         case "$soc_id" in
          "187" | "227" | "228" | "229" | "230" | "231")
                 echo -n "Starting powerconfig for 9x35: "
                 subsyszero=`cat /sys/bus/msm_subsys/devices/subsys0/name`
