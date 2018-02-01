@@ -148,7 +148,7 @@ case "$1" in
          case "$soc_id" in
          "334" )
                 echo -n "Starting powerconfig for SDX24: "
-                echo Y > /sys/module/lpm_levels/parameters/sleep_disabled
+                echo N > /sys/module/lpm_levels/parameters/sleep_disabled
                 ;;
          esac
 
