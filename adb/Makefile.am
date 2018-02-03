@@ -37,9 +37,8 @@ libadbd_la_CPPFLAGS += -DUSE_GLIB -Dstrlcat=g_strlcat @GLIB_CFLAGS@
 libadbd_la_CPPFLAGS += -DADB_HOST=0
 libadbd_la_CPPFLAGS += -DADB_REVISION='"$(adb_version)"'
 
-libadbd_la_LIBADD   := ../base/libbase.la
-libadbd_la_LIBADD   += ../fs_mgr/libfs_mgr.la
-libadbd_la_LDFLAGS  := -lselinux -lcutils -lext4_utils -lmincrypt -lresolv
+libadbd_la_LIBADD   := ../fs_mgr/libfs_mgr.la
+libadbd_la_LDFLAGS  := -lselinux -lcutils -lext4_utils -lmincrypt -lresolv -lbase
 
 # Build adb daemon
 # Prefer adbd to be located in /sbin for historical reasons
@@ -74,9 +73,8 @@ adbd_CPPFLAGS += -DALLOW_ADBD_DISABLE_VERITY=1
 adbd_CPPFLAGS += -DUSE_GLIB -Dstrlcat=g_strlcat @GLIB_CFLAGS@
 
 adbd_LDADD   := libadbd.la
-adbd_LDADD   += ../base/libbase.la
 adbd_LDADD   += ../fs_mgr/libfs_mgr.la
-adbd_LDFLAGS := -lcutils -lresolv -lmincrypt -lselinux
+adbd_LDFLAGS := -lcutils -lresolv -lmincrypt -lselinux -lbase
 endif
 
 # adb host tool for linux

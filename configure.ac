@@ -23,6 +23,8 @@ PKG_CHECK_MODULES([LIBSELINUX], [libselinux])
 AC_SUBST([LIBSELINUX_CFLAGS])
 AC_SUBST([LIBSELINUX_LIBS])
 
+PKG_CHECK_MODULES([LIBBASE], [libbase])
+
 AS_CASE([$host],
         [arm*], [ARM=yes],
         [ARM=no]
@@ -126,8 +128,6 @@ AC_CONFIG_FILES([ \
     Makefile \
     libutils/Makefile \
     libutils/libutils.pc \
-    base/Makefile \
-    base/libbase.pc \
     logwrapper/Makefile \
     logwrapper/logwrapper.pc \
     libsync/Makefile \
