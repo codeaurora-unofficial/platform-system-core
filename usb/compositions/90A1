@@ -120,6 +120,7 @@ run_configfs() {
 	ln -s functions/gsi.rmnet configs/c.1/f3
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
+	cd /
 }
 
 case `source /sbin/usb/target` in

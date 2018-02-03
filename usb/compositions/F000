@@ -55,6 +55,7 @@ run_configfs() {
 	ln -s functions/mass_storage.0 configs/c.1/f1
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
+	cd /
 }
 
 case `source /sbin/usb/target` in

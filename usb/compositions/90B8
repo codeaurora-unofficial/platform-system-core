@@ -94,6 +94,7 @@ run_configfs() {
 	ln -s functions/ffs.adb configs/c.1/f5
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
+	cd /
 }
 
 case `source /sbin/usb/target` in

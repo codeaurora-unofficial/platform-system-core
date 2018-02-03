@@ -99,6 +99,7 @@ case "$1" in
 		echo "$socplatform" > strings/0x409/product
 		echo "$product_string" > /config/usb_gadget/g1/strings/0x409/product
 		setprop sys.usb.configfs 1
+		cd /
 	fi
 
 	if [ -d /sys/class/android_usb/android0 ]

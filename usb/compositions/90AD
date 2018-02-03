@@ -154,6 +154,7 @@ run_configfs() {
 	ln -s functions/gsi.dpl configs/c.1/f7
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
+	cd /
 }
 
 case `source /sbin/usb/target` in

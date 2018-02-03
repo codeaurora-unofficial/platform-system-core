@@ -117,6 +117,7 @@ run_configfs() {
 	echo 0xA0 > configs/c.2/bmAttributes
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
+	cd /
 }
 
 case `source /sbin/usb/target` in
