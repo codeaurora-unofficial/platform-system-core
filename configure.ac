@@ -104,6 +104,24 @@ AC_ARG_ENABLE(logd-privs,
 
 AM_CONDITIONAL(LOGDPRIVS, [test "x${logd_privs}" = "xyes"])
 
+AC_ARG_WITH([system-size],
+        [AS_HELP_STRING([--with-system-size=SYSTEM_SIZE],[Size of system partition.])],
+        [SYSTEM_SIZE="$withval"],
+        [SYSTEM_SIZE="0"])
+
+AC_SUBST(SYSTEM_SIZE)
+
+AC_MSG_NOTICE([System of size $SYSTEM_SIZE detected.])
+
+AC_ARG_WITH([fec-size],
+        [AS_HELP_STRING([--with-fec-size=FEC_SIZE],[Size of fec image .])],
+        [FEC_SIZE="$withval"],
+        [FEC_SIZE="0"])
+
+AC_SUBST(FEC_SIZE)
+
+AC_MSG_NOTICE([fec image size $FEC_SIZE detected.])
+
 AC_CONFIG_FILES([ \
     Makefile \
     libutils/Makefile \
