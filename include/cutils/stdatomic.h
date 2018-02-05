@@ -30,7 +30,7 @@
 #ifndef _STDATOMIC_H_
 #define	_STDATOMIC_H_
 
-#include <sys/cdefs.h>
+
 
 #if defined(__GNUC__) && !defined(__GNUC_PREREQ)
 /* Duplicate definition here, since the mingw sys/cdefs.h omits the  */

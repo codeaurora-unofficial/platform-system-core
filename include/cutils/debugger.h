@@ -17,11 +17,13 @@
 #ifndef __CUTILS_DEBUGGER_H
 #define __CUTILS_DEBUGGER_H
 
-#include <sys/cdefs.h>
+
 #include <sys/types.h>
 #include <stdint.h>
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define DEBUGGER_SOCKET_NAME "android:debuggerd"
 #define DEBUGGER32_SOCKET_NAME "android:debuggerd32"
@@ -73,6 +75,8 @@ int dump_backtrace_to_file(pid_t tid, int fd);
  */
 int dump_backtrace_to_file_timeout(pid_t tid, int fd, int timeout_secs);
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __CUTILS_DEBUGGER_H */

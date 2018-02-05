@@ -18,11 +18,12 @@
 #define _CUTILS_AREF_H_
 
 #include <stddef.h>
-#include <sys/cdefs.h>
 
 #include <cutils/atomic.h>
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define AREF_TO_ITEM(aref, container, member) \
     (container *) (((char*) (aref)) - offsetof(container, member))
@@ -53,6 +54,8 @@ static inline void aref_put(struct aref *r, void (*release)(struct aref *))
         release(r);
 }
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _CUTILS_AREF_H_
