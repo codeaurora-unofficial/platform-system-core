@@ -17,7 +17,7 @@
 #ifndef __CUTILS_PROPERTIES_H
 #define __CUTILS_PROPERTIES_H
 
-#include <sys/cdefs.h>
+
 #include <stddef.h>
 #include <stdint.h>
 

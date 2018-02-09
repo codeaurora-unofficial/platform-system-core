@@ -18,10 +18,10 @@
 #define __CUTILS_STR_PARMS_H
 
 #include <stdint.h>
-#include <sys/cdefs.h>
 
-__BEGIN_DECLS
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct str_parms;
 
 struct str_parms *str_parms_create(void);
@@ -55,6 +55,7 @@ char *str_parms_to_str(struct str_parms *str_parms);
 /* debug */
 void str_parms_dump(struct str_parms *str_parms);
 
-__END_DECLS
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* __CUTILS_STR_PARMS_H */

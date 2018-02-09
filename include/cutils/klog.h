@@ -17,11 +17,12 @@
 #ifndef _CUTILS_KLOG_H_
 #define _CUTILS_KLOG_H_
 
-#include <sys/cdefs.h>
 #include <sys/uio.h>
 #include <stdarg.h>
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* These correspond to the kernel's SYSLOG_ACTION_whatever constants. */
 #define KLOG_CLOSE         0
@@ -47,7 +48,9 @@ void klog_write(int level, const char *fmt, ...)
     __attribute__ ((format(printf, 2, 3)));
 void klog_writev(int level, const struct iovec* iov, int iov_count);
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #define KLOG_ERROR_LEVEL   3
 #define KLOG_WARNING_LEVEL 4

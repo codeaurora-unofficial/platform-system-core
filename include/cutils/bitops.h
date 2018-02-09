@@ -20,9 +20,11 @@
 #include <stdbool.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/cdefs.h>
 
-__BEGIN_DECLS
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Bitmask Operations
@@ -115,6 +117,8 @@ static inline int popcountll(unsigned long long x)
     return __builtin_popcountll(x);
 }
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __CUTILS_BITOPS_H */

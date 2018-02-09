@@ -17,10 +17,14 @@
 #ifndef __CUTILS_PARTITION_WIPED_H__
 #define __CUTILS_PARTITION_WIPED_H__
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int partition_wiped(char *source);
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __CUTILS_PARTITION_WIPED_H__ */
