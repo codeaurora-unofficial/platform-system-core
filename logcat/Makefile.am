@@ -9,6 +9,5 @@ logcat_CPPFLAGS += -std=c++14
 logcat_CPPFLAGS += -D_XOPEN_SOURCE
 logcat_CPPFLAGS += -DHAVE_IOCTL -DHAVE_SYS_UIO_H
 
-logcat_LDADD   =  ../base/libbase.la
-logcat_LDFLAGS =  -llog -lcutils
+logcat_LDFLAGS =  -llog -lcutils -lbase
 
