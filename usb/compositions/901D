@@ -99,7 +99,7 @@ case `source /sbin/usb/target` in
 			run_configfs $udcname &
 		fi
                 ;;
-	*8098* | *sdxpoorwills* )
+	*8098* | *qcs605* | *sdxpoorwills* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
