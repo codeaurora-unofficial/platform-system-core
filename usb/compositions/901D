@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2014,2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2014,2017-2018, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -46,7 +46,13 @@ else
 	from_adb="n"
 fi
 
-run_9x35() {
+if [ -f /sys/class/android_usb/android$num/enable ]; then
+	configfs_supported="n"
+else
+	configfs_supported="y"
+fi
+
+run_non_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
@@ -86,25 +92,12 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	*9x35* )
-		run_9x35 &
-		;;
-	*9640* )
-		run_9x35 &
-		;;
-        *8096* )
-		udcname="6a00000.dwc3"
-		if [ -f /sys/class/android_usb/android$num/enable ]; then
-			run_9x35 &
-		else
+	* )
+		if [ $configfs_supported = "y" ]; then
+			udcname=`ls -1 /sys/class/udc | head -n 1`
 			run_configfs $udcname &
+		else
+			run_non_configfs &
 		fi
-                ;;
-	*8098* | *qcs605* | *sdxpoorwills* )
-		udcname=`ls -1 /sys/class/udc | head -n 1`
-		run_configfs $udcname &
-		;;
-        * )
-		run_9x35 &
 		;;
 esac
