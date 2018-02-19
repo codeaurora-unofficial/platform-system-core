@@ -500,9 +500,9 @@ int service_to_fd(const char *name)
             }
         }
     } else if(!strncmp(name, "disable-verity:", 15)) {
-        ret = create_service_thread(set_verity_enabled_state_service, (void*)0);
+        ret = create_service_thread(set_verity_enabled_state_service_le, (void*)0);
     } else if(!strncmp(name, "enable-verity:", 15)) {
-        ret = create_service_thread(set_verity_enabled_state_service, (void*)1);
+        ret = create_service_thread(set_verity_enabled_state_service_le, (void*)1);
 #endif
     }
     if (ret >= 0) {
