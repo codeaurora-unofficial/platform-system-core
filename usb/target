@@ -69,7 +69,7 @@ case `cat ${TARGET_DIR}` in
 	*605* )
 		res="qcs605";
 		;;
-	*apq8098* )
+	*8098* )
 		res="8098";
 		;;
 	*sdxpoorwills* )
