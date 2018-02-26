@@ -27,8 +27,7 @@ if LOGDPRIVS
 logd_CPPFLAGS += -DLOGD_DROP_PRIVS
 endif
 
-logd_LDADD   = ../base/libbase.la
-logd_LDADD  += ../libutils/libutils.la
+logd_LDADD  = ../libutils/libutils.la
 logd_LDADD  += ../libsysutils/libsysutils.la
-logd_LDFLAGS = -llog -lcutils
+logd_LDFLAGS = -llog -lcutils -lbase
 

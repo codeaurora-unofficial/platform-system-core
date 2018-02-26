@@ -33,6 +33,7 @@
 #include "remount_service.h"
 
 #define FSTAB_PREFIX "/fstab."
+#define VERITY_METADATA_SIZE 32768
 struct fstab *fstab;
 
 #ifdef ALLOW_ADBD_DISABLE_VERITY
@@ -69,7 +70,9 @@ static int get_target_device_size(int fd, const char *blk_device,
     }
 
     ext4_parse_sb(&sb, &info);
-    *device_size = info.len;
+
+    /* SYSTEM_SIZE : system partition size; FEC_SIZE:fec image size; VERITY_METADATA_SIZE : index to the metadata magic number */
+    *device_size =  SYSTEM_SIZE - FEC_SIZE - VERITY_METADATA_SIZE ;
 
     adb_close(data_device);
     return 0;
@@ -152,6 +155,25 @@ errout:
     return retval;
 }
 
+void set_verity_enabled_state_service_le(int fd, void* cookie)
+{
+    bool enable = (cookie != NULL);
+    if (kAllowDisableVerity) {
+	bool any_changed = false;
+
+        if (!set_verity_enabled_state(fd, "/dev/block/bootdevice/by-name/system", "/",
+                                              enable)) {
+                    any_changed = true;
+        }
+
+        if (any_changed) {
+            WriteFdFmt(fd, "Now reboot your device for settings to take effect\n");
+        }
+    } else {
+        WriteFdFmt(fd, "%s-verity only works for userdebug builds\n",
+                   enable ? "enable" : "disable");
+    }
+}
 void set_verity_enabled_state_service(int fd, void* cookie)
 {
     bool enable = (cookie != NULL);
