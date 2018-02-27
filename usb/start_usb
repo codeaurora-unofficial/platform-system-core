@@ -96,7 +96,12 @@ case "$1" in
 		mkdir functions/ncm.0
 		mkdir functions/qdss.qdss
 		mkdir functions/uac1.uac1
-		echo "$serialno" > strings/0x409/serialnumber
+		if [ ! -s "/etc/adb_devid" ]
+		then
+			echo $serialno > /etc/adb_devid
+			sync
+		fi
+		cat /etc/adb_devid > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
 		echo "$socplatform" > strings/0x409/product
 		echo "$product_string" > /config/usb_gadget/g1/strings/0x409/product
