@@ -21,6 +21,12 @@
   AC_PROG_LN_S
   AC_PROG_MAKE_SET
 
+  AC_ARG_ENABLE(img-convert-utils,
+      AC_HELP_STRING([--disable-img-convert-utils], [Don't build utilities needed for sparse to unsparse image conversion.]),
+              [img_convert_utils=${enableval}], [img_convert_utils="no"])
+
+  AM_CONDITIONAL([IMG_CONVERT_UTILS],[test "x${img_convert_utils}" = "xyes"])
+
   AC_MSG_CHECKING(for zlib support)
   AC_ARG_WITH(zlib, AC_HELP_STRING([--with-zlib],[Enable zlib support for mod_compress]),
       [WITH_ZLIB=$withval],[WITH_ZLIB=yes])

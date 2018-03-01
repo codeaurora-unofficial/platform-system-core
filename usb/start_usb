@@ -25,13 +25,6 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Starts the USB Android Gadget.
-wait_for_data_mount() {
-  while ! [ -d /data/usb ]
-  do
-	echo "waiting for /data to mount"
-  done
-}
-
 export KERNEL=`uname -r`
 export SOFTAP_W_DUN="N"
 export ANDROID_LOG_TAGS="*:d"
@@ -128,11 +121,10 @@ case "$1" in
 			echo 3 > /sys/module/dwc3/parameters/bulk_ep_xfer_timeout_ms
 			;;
 		*8909* )
-			wait_for_data_mount
-			ln -fs /sbin/usb/compositions/9091 /data/usb/boot_hsusb_composition
+			echo 9091 > /etc/usb/boot_hsusb_comp
 			;;
 		*8916* )
-			ln -fs /sbin/usb/compositions/9091 /data/usb/boot_hsusb_composition
+			echo 9091 > /etc/usb/boot_hsusb_comp
                         ;;
 		*9640* )
 			echo 16384 > /sys/module/g_android/parameters/rndis_dl_max_xfer_size
@@ -145,8 +137,7 @@ case "$1" in
 			echo Y > /sys/module/dwc3/parameters/enable_dwc3_u1u2
 			;;
 		*8053* | *8017* | *qcs605* )
-			wait_for_data_mount
-			ln -fs /sbin/usb/compositions/901D /data/usb/boot_hsusb_composition
+			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
 	esac
 
@@ -166,7 +157,8 @@ case "$1" in
 	# boot hsic composition:
 	if [ -d /sys/class/android_usb/android1 ]
 	then
-		/data/usb/boot_hsic_composition y
+		pid=`cat /etc/usb/boot_hsic_comp`
+		/sbin/usb/compositions/$pid y
 		# let hsic compostion script run before starting hsusb
 		sleep 1
 	fi
@@ -174,7 +166,8 @@ case "$1" in
 	# boot hsusb composition:
 	if [ -d /sys/class/android_usb/android0 ]
 	then
-		/data/usb/boot_hsusb_composition n
+		pid=`cat /etc/usb/boot_hsusb_comp`
+		/sbin/usb/compositions/$pid n
 
 		if [ "$SOFTAP_W_DUN" == "Y" ]
 		then
