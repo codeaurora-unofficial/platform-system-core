@@ -1,6 +1,8 @@
 [Unit]
 SourcePath=/sbin/leprop-service
 Description=leprop Service
+After=mount-data.service
+Requires=mount-data.service
 
 [Service]
 Restart=always
