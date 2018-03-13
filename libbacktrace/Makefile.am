@@ -24,8 +24,7 @@ libbacktrace_la_CPPFLAGS := -I$(top_srcdir)/include
 libbacktrace_la_CPPFLAGS += -I$(top_srcdir)/base/include/
 libbacktrace_la_CPPFLAGS += $(AM_CFLAGS)
 libbacktrace_la_CPPFLAGS += -std=c++14
-libbacktrace_la_LIBADD   := ../base/libbase.la
-libbacktrace_la_LDFLAGS := -lpthread -lrt -lunwind
+libbacktrace_la_LDFLAGS := -lpthread -lrt -lunwind -lbase
 
 # Export headers
 backtrace_includedir=$(includedir)/backtrace
