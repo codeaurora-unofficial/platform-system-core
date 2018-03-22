@@ -149,6 +149,7 @@ static struct fs_path_config android_files[] = {
     { 00755, AID_ROOT,      AID_ROOT,      "system/usr/sbin/*" },
     { 00755, AID_ROOT,      AID_ROOT,      "system/usr/lib/*" },
     { 00755, AID_ROOT,      AID_ROOT,      "system/usr/kernel-tests/*" },
+    { 00755, AID_ROOT,      AID_ROOT,      "system/usr/tests/*" },
     { 00644, AID_ROOT,      AID_ROOT,      "system/usr/*" },
     { 00644, AID_ROOT,      AID_ROOT,      "system/*" },
 
