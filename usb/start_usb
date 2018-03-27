@@ -87,6 +87,7 @@ case "$1" in
 		mkdir functions/gsi.ecm
 		mkdir functions/gsi.mbim
 		mkdir functions/gsi.dpl
+		mkdir functions/gsi.gps
 		mkdir functions/ncm.0
 		mkdir functions/qdss.qdss
 		mkdir functions/uac1.uac1
