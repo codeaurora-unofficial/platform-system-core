@@ -39,7 +39,7 @@
 	((__GNUC__ == (x) && __GNUC_MINOR__ >= (y)) || (__GNUC__ > (x)))
 #endif /* __GNUC__ && ... */
 
-#if defined(__cplusplus) && __cplusplus >= 201103L && defined(_USING_LIBCXX)
+#if defined(__cplusplus) && __cplusplus >= 201103L
 # ifdef __clang__
 #  if __has_feature(cxx_atomic)
 #   define _STDATOMIC_HAVE_ATOMIC
@@ -92,7 +92,10 @@ using std::atomic_fetch_and_explicit;
 using std::atomic_thread_fence;
 using std::atomic_signal_fence;
 
+#ifndef __clang__
 using std::memory_order;
+#endif
+
 using std::memory_order_relaxed;
 using std::memory_order_consume;
 using std::memory_order_acquire;
