@@ -31,6 +31,7 @@
 
 const uint64_t LogBufferElement::FLUSH_ERROR(0);
 atomic_int_fast64_t LogBufferElement::sequence;
+const int_fast64_t start(1);
 
 LogBufferElement::LogBufferElement(log_id_t log_id, log_time realtime,
                                    uid_t uid, pid_t pid, pid_t tid,
@@ -40,7 +41,7 @@ LogBufferElement::LogBufferElement(log_id_t log_id, log_time realtime,
         mPid(pid),
         mTid(tid),
         mMsgLen(len),
-        mSequence(atomic_fetch_add_explicit(&sequence, 1, memory_order_relaxed)),
+        mSequence(atomic_fetch_add_explicit(&sequence, start, memory_order_relaxed)),
         mRealTime(realtime) {
     mMsg = new char[len];
     memcpy(mMsg, msg, len);
