@@ -859,7 +859,7 @@ int handle_host_request(char *service, transport_type ttype, char* serial, int r
         char* serial = service + 11;
         if (serial[0] == 0) {
             // disconnect from all TCP devices
-            unregister_all_tcp_transports();
+            kick_all_tcp_devices();
         } else {
             char hostbuf[100];
             // assume port 5555 if no port is specified
@@ -870,7 +870,7 @@ int handle_host_request(char *service, transport_type ttype, char* serial, int r
             atransport *t = find_transport(serial);
 
             if (t) {
-                unregister_transport(t);
+                kick_transport(t);
             } else {
                 snprintf(buffer, sizeof(buffer), "No such device %s", serial);
             }
