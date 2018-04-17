@@ -88,6 +88,12 @@ AC_ARG_WITH([logd-logging],
 
 AM_CONDITIONAL(USE_LOGD, [test "x${with_logd_logging}" = "xyes"])
 
+AC_ARG_WITH(libsync,
+      AC_HELP_STRING([--disable-libsync],
+         [Disable libsync usage on target]))
+
+AM_CONDITIONAL(USE_LIBSYNC, [test "x${enable_libsync}" = "xyes"])
+
 AC_ARG_ENABLE(adb-root,
       AC_HELP_STRING([--disable-adb-root], [Disable root privileges for adbd]),
          [adb_root=${enableval}], [adb_root="yes"])
@@ -130,6 +136,8 @@ AC_CONFIG_FILES([ \
     libutils/libutils.pc \
     logwrapper/Makefile \
     logwrapper/logwrapper.pc \
+    libsync/Makefile \
+    libsync/libsync.pc \
     fs_mgr/Makefile \
     fs_mgr/fs_mgr.pc \
     libsysutils/Makefile \
