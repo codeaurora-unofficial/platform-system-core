@@ -42,8 +42,8 @@ case "$1" in
   start)
         if [ ! -d /dev/socket ]; then
             mkdir /dev/socket
-            chmod 777 /dev/socket
         fi
+        chmod 777 /dev/socket
         echo 600 > /proc/sys/net/unix/max_dgram_qlen
         if [ -z $(pidof -o %PPID logd) ]; then
             echo "Starting logd ..."
