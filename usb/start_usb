@@ -140,7 +140,7 @@ case "$1" in
 			;;
 		*9650* )
 			echo 16384 > /sys/module/g_android/parameters/gsi_in_rndis_aggr_size
-			if [ -f /dev/mhi_ctrl ]; then
+			if [ -e /dev/mhi_ctrl ]; then
 				ln -fs /sbin/usb/compositions/901F /data/usb/boot_hsusb_composition
 			fi
 			if [ "$soc_hwplatform" == "TTP" ] && [ "$soc_subtypeid" == "$SUBTYPE_ID_CV2X" ]; then
@@ -151,7 +151,7 @@ case "$1" in
 		*sdx20* )
 			echo Y > /sys/module/libcomposite/parameters/enable_l1_for_hs
 			echo Y > /sys/module/dwc3/parameters/enable_dwc3_u1u2
-			if [ -f /dev/mhi_ctrl ]; then
+			if [ -e /dev/mhi_ctrl ]; then
 				ln -fs /sbin/usb/compositions/901F /data/usb/boot_hsusb_composition
 			fi
 			;;
