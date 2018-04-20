@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2015, 2018, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -124,7 +124,13 @@ case "$1" in
 			echo 3 > /sys/module/dwc3/parameters/bulk_ep_xfer_timeout_ms
 			;;
 		*8909* )
-			echo 9091 > /etc/usb/boot_hsusb_comp
+			export KERNEL_VER=`uname -r | head -c 3`
+			if [ $KERNEL_VER == "4.9" ]
+			then
+				echo 901D > /etc/usb/boot_hsusb_comp
+			else
+				echo 9091 > /etc/usb/boot_hsusb_comp
+			fi
 			;;
 		*8916* )
 			echo 9091 > /etc/usb/boot_hsusb_comp
