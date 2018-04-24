@@ -138,6 +138,7 @@ run_configfs() {
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
+	rm os_desc/c* 2> /dev/null
 	rm configs/c*/f* 2> /dev/null
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	mkdir configs/c.2
@@ -153,6 +154,12 @@ run_configfs() {
 	ln -s functions/gsi.rmnet configs/c.1/f2
 	ln -s functions/mass_storage.1 configs/c.2/f1
 	ln -s functions/gsi.mbim configs/c.2/f2
+	ln -s configs/c.2 os_desc
+	echo 1 > os_desc/use
+	echo 0xA5 > os_desc/b_vendor_code
+	echo MSFT100 > os_desc/qw_sign
+	echo ALTRCFG > functions/gsi.mbim/os_desc/interface.MBIM/compatible_id
+	echo 20000000 > functions/gsi.mbim/os_desc/interface.MBIM/sub_compatible_id
 	echo 0xA0 > configs/c.1/bmAttributes
 	echo 0xA0 > configs/c.2/bmAttributes
 	echo "binding UDC with Gadget..." $1
