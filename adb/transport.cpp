@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include <base/stringprintf.h>
+#include <base/logging.h>
 
 #include "adb.h"
 #include "adb_utils.h"
@@ -45,21 +46,20 @@ static atransport pending_list = {
 
 ADB_MUTEX_DEFINE( transport_lock );
 
+static void kick_transport_locked(atransport* t) {
+    CHECK(t != nullptr);
+    if (!t->kicked) {
+        t->kicked = true;
+        t->kick(t);
+    }
+}
+
+
 void kick_transport(atransport* t)
 {
-    if (t && !t->kicked)
-    {
-        int  kicked;
-
-        adb_mutex_lock(&transport_lock);
-        kicked = t->kicked;
-        if (!kicked)
-            t->kicked = 1;
-        adb_mutex_unlock(&transport_lock);
-
-        if (!kicked)
-            t->kick(t);
-    }
+    adb_mutex_lock(&transport_lock);
+    kick_transport_locked(t);
+	adb_mutex_unlock(&transport_lock);
 }
 
 // Each atransport contains a list of adisconnects (t->disconnects).
@@ -668,30 +668,21 @@ static void remove_transport(atransport *transport)
     }
 }
 
-
-static void transport_unref_locked(atransport *t)
+static void transport_unref(atransport *t)
 {
+    CHECK(t != nullptr);
+    adb_mutex_lock(&transport_lock);
+    CHECK_GT(t->ref_count, 0u);
     t->ref_count--;
     if (t->ref_count == 0) {
         D("transport: %s unref (kicking and closing)\n", t->serial);
-        if (!t->kicked) {
-            t->kicked = 1;
-            t->kick(t);
-        }
+        kick_transport_locked(t);
         t->close(t);
         remove_transport(t);
     } else {
-        D("transport: %s unref (count=%d)\n", t->serial, t->ref_count);
+        D("transport: %s unref (count=%zu)\n", t->serial, t->ref_count);
     }
-}
-
-static void transport_unref(atransport *t)
-{
-    if (t) {
-        adb_mutex_lock(&transport_lock);
-        transport_unref_locked(t);
-        adb_mutex_unlock(&transport_lock);
-    }
+    adb_mutex_unlock(&transport_lock);
 }
 
 void add_transport_disconnect(atransport*  t, adisconnect*  dis)
@@ -981,37 +972,16 @@ atransport *find_transport(const char *serial)
         return 0;
 }
 
-void unregister_transport(atransport *t)
+void kick_all_tcp_devices()
 {
     adb_mutex_lock(&transport_lock);
-    t->next->prev = t->prev;
-    t->prev->next = t->next;
-    adb_mutex_unlock(&transport_lock);
-
-    kick_transport(t);
-    transport_unref(t);
-}
-
-// unregisters all non-emulator TCP transports
-void unregister_all_tcp_transports()
-{
-    atransport *t, *next;
-    adb_mutex_lock(&transport_lock);
-    for (t = transport_list.next; t != &transport_list; t = next) {
+    for (auto& t : transport_list) {
+        // TCP/IP devices have adb_port == 0
         next = t->next;
         if (t->type == kTransportLocal && t->adb_port == 0) {
-            t->next->prev = t->prev;
-            t->prev->next = next;
-            // we cannot call kick_transport when holding transport_lock
-            if (!t->kicked)
-            {
-                t->kicked = 1;
-                t->kick(t);
-            }
-            transport_unref_locked(t);
+            kick_transport_locked(t);
         }
-     }
-
+    }
     adb_mutex_unlock(&transport_lock);
 }
 

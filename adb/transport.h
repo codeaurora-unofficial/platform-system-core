@@ -53,10 +53,6 @@ int register_socket_transport(int s, const char* serial, int port, int local);
 /* this should only be used for transports with connection_state == CS_NOPERM */
 void unregister_usb_transport(usb_handle* usb);
 
-/* these should only be used for the "adb disconnect" command */
-void unregister_transport(atransport* t);
-void unregister_all_tcp_transports();
-
 int check_header(apacket* p);
 int check_data(apacket* p);
 
@@ -67,4 +63,5 @@ void send_packet(apacket* p, atransport* t);
 
 asocket* create_device_tracker(void);
 
+void kick_all_tcp_devices();
 #endif   /* __TRANSPORT_H */
