@@ -34,16 +34,16 @@ set -e
 
 case "$1" in
   start)
-        echo -n "Starting logd: "
-        # /dev/socket
         if [ ! -d /dev/socket ]; then
             mkdir /dev/socket
             chmod 777 /dev/socket
         fi
         echo 600 > /proc/sys/net/unix/max_dgram_qlen
-        if [ -z $(pidof logd) ]; then
+        if [ -z $(pidof -o %PPID logd) ]; then
+            echo -n "Starting logd: "
             start-stop-daemon -S -b -a /sbin/logd
         else
+            echo -n "Logd running: "
             chmod 0666 /dev/socket/logd
             chmod 0666 /dev/socket/logdr
             chmod 0222 /dev/socket/logdw

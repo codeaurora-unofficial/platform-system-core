@@ -22,7 +22,8 @@
 int property_get(const char *key, char *value, const char *default_value) {
     int rc = 0;
 #ifdef LE_PROPERTIES
-    rc =  get_property_value(key,value);
+    if(get_property_value(key,value) == true)
+        rc = strlen(value);
     if( rc > 0) {
       return rc;
     }
@@ -30,7 +31,6 @@ int property_get(const char *key, char *value, const char *default_value) {
     if (NULL != default_value) {
         rc = sprintf(value, "%.*s", PROPERTY_VALUE_MAX - 1, default_value);
     }
-
     return rc;
 }
 
