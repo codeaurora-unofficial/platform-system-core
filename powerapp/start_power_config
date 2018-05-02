@@ -38,6 +38,7 @@ case "$1" in
 	case "$soc_id" in
 	"290" | "296" | "297" | "298" | "299" | "322")
 		echo -n "Starting powerconfig for mdm9607: "
+		echo "Starting powerconfig for mdm9607: " > /dev/kmsg
 
 		echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 		echo 40000 > /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
@@ -50,6 +51,8 @@ case "$1" in
 
 		# Enable Low Power modes
 		echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+		echo N > /sys/module/lpm_levels/system/cpu0/pc/idle_enabled
+		echo N > /sys/module/lpm_levels/system/cpu0/pc/suspend_enabled
 		;;
 	esac
 
