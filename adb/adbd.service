@@ -31,12 +31,14 @@ Description=adbd Service
 After=usb.service
 
 [Service]
-Type=forking
-Restart=no
+Type=simple
+Restart=always
 TimeoutSec=5min
 IgnoreSIGPIPE=no
 KillMode=process
 GuessMainPID=no
-RemainAfterExit=yes
-ExecStart=/etc/launch_adbd start
-ExecStop=/etc/launch_adbd stop
+#RemainAfterExit=yes
+ExecStartPre=-/usr/bin/pkill adbd
+ExecStart=/sbin/adbd
+
+
