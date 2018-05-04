@@ -139,7 +139,7 @@ case "$1" in
 			echo Y > /sys/module/libcomposite/parameters/enable_l1_for_hs
 			echo Y > /sys/module/dwc3/parameters/enable_dwc3_u1u2
 			;;
-		*8053* | *8017* | *qcs605* )
+		*8053* | *8017* | *qcs605* | *qcs40x* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
 	esac
