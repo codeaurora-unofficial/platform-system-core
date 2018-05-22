@@ -123,15 +123,6 @@ case "$1" in
 			echo 1 > /sys/devices/virtual/android_usb/android0/f_rndis_qc/max_pkt_per_xfer
 			echo 3 > /sys/module/dwc3/parameters/bulk_ep_xfer_timeout_ms
 			;;
-		*8909* )
-			export KERNEL_VER=`uname -r | head -c 3`
-			if [ $KERNEL_VER == "4.9" ]
-			then
-				echo 901D > /etc/usb/boot_hsusb_comp
-			else
-				echo 9091 > /etc/usb/boot_hsusb_comp
-			fi
-			;;
 		*8916* )
 			echo 9091 > /etc/usb/boot_hsusb_comp
                         ;;
@@ -145,7 +136,7 @@ case "$1" in
 			echo Y > /sys/module/libcomposite/parameters/enable_l1_for_hs
 			echo Y > /sys/module/dwc3/parameters/enable_dwc3_u1u2
 			;;
-		*8053* | *8017* | *qcs605* | *qcs40x* )
+		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
 	esac
