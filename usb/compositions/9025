@@ -167,6 +167,7 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
+		sleep $delay
 		/etc/launch_adbd start
 		sleep 1
 	fi
