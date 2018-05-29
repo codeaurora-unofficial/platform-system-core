@@ -59,11 +59,13 @@
 #include "init.h"
 #include "persistent_properties.h"
 #include "property_type.h"
+#include "selinux.h"
 #include "subcontext.h"
 #include "util.h"
 
 using namespace std::literals;
 
+using android::base::GetIntProperty;
 using android::base::ReadFileToString;
 using android::base::Split;
 using android::base::StartsWith;
@@ -541,9 +543,11 @@ static void LoadProperties(char* data, const char* filter, const char* filename)
     size_t flen = 0;
 
     const char* context = kInitContext.c_str();
-    for (const auto& [path_prefix, secontext] : paths_and_secontexts) {
-        if (StartsWith(filename, path_prefix)) {
-            context = secontext;
+    if (SelinuxHasVendorInit()) {
+        for (const auto& [path_prefix, secontext] : paths_and_secontexts) {
+            if (StartsWith(filename, path_prefix)) {
+                context = secontext;
+            }
         }
     }
 

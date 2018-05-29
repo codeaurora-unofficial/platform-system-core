@@ -35,6 +35,11 @@ namespace base {
 
 std::string GetProperty(const std::string& key, const std::string& default_value);
 bool GetBoolProperty(const std::string& key, bool default_value);
+template <typename T>
+T GetIntProperty(const std::string&, T default_value, T = std::numeric_limits<T>::min(),
+                 T = std::numeric_limits<T>::max()) {
+    return default_value;
+}
 
 }  // namespace base
 }  // namespace android
@@ -51,6 +56,7 @@ uint32_t HandlePropertySet(const std::string& name, const std::string& value,
                            const std::string& source_context, const ucred& cr, std::string* error);
 
 // selinux.h
+bool SelinuxHasVendorInit();
 void SelabelInitialize();
 bool SelabelLookupFileContext(const std::string& key, int type, std::string* result);
 
