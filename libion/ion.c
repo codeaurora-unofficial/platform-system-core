@@ -31,9 +31,10 @@
 #include <unistd.h>
 
 #include <ion/ion.h>
-#include "ion_4.12.h"
 
 #include <log/log.h>
+
+#define UNUSED_PARAM(x) ((void)(x))
 
 enum ion_version { ION_VERSION_UNKNOWN, ION_VERSION_MODERN, ION_VERSION_LEGACY };
 
@@ -156,22 +157,13 @@ int ion_alloc_fd(int fd, size_t len, size_t align, unsigned int heap_mask, unsig
     ion_user_handle_t handle;
     int ret;
 
-    if (!ion_is_legacy(fd)) {
-        struct ion_new_allocation_data data = {
-            .len = len,
-            .heap_id_mask = heap_mask,
-            .flags = flags,
-        };
+    if (!ion_is_legacy(fd)) return -EINVAL;
 
-        ret = ion_ioctl(fd, ION_IOC_NEW_ALLOC, &data);
-        if (ret < 0) return ret;
-        *handle_fd = data.fd;
-    } else {
-        ret = ion_alloc(fd, len, align, heap_mask, flags, &handle);
-        if (ret < 0) return ret;
-        ret = ion_share(fd, handle, handle_fd);
-        ion_free(fd, handle);
-    }
+    ret = ion_alloc(fd, len, align, heap_mask, flags, &handle);
+    if (ret < 0) return ret;
+    ret = ion_share(fd, handle, handle_fd);
+    ion_free(fd, handle);
+
     return ret;
 }
 
@@ -202,24 +194,13 @@ int ion_sync_fd(int fd, int handle_fd) {
 }
 
 int ion_query_heap_cnt(int fd, int* cnt) {
-    int ret;
-    struct ion_heap_query query;
-
-    memset(&query, 0, sizeof(query));
-
-    ret = ion_ioctl(fd, ION_IOC_HEAP_QUERY, &query);
-    if (ret < 0) return ret;
-
-    *cnt = query.cnt;
-    return ret;
+    UNUSED_PARAM(fd);
+    UNUSED_PARAM(cnt);
+    return -EINVAL;
 }
-
 int ion_query_get_heaps(int fd, int cnt, void* buffers) {
-    int ret;
-    struct ion_heap_query query = {
-        .cnt = cnt, .heaps = (uintptr_t)buffers,
-    };
-
-    ret = ion_ioctl(fd, ION_IOC_HEAP_QUERY, &query);
-    return ret;
+    UNUSED_PARAM(fd);
+    UNUSED_PARAM(cnt);
+    UNUSED_PARAM(buffers);
+    return -EINVAL;
 }
