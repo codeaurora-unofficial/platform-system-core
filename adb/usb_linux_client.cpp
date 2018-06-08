@@ -397,7 +397,6 @@ err:
     return;
 }
 
-#define USB_COMPOSITION_SCRIPT "/data/usb/boot_hsusb_composition"
 #define UDC_DIR "/sys/class/udc"
 #define UDC_FILE_PATH "/sys/kernel/config/usb_gadget/g1/UDC"
 
@@ -406,8 +405,8 @@ static void *usb_ffs_open_thread(void *x)
     struct usb_handle *usb = (struct usb_handle *)x;
     char value[PROPERTY_VALUE_MAX];
     DIR *udcdir;
-    struct dirent *file;
-    int fd;
+    struct dirent *file, **filelist;
+    int fd, n, i;
 
     while (true) {
         // wait until the USB device needs opening
@@ -431,14 +430,21 @@ static void *usb_ffs_open_thread(void *x)
 	// script check is done to detect we are running OE
 	// as it will be present only for OE userspace.
 	property_get("sys.usb.configfs", value, "");
-	if (!strncmp(value, "1", 1) &&
-		access(USB_COMPOSITION_SCRIPT, F_OK ) != -1) {
+	if (!strncmp(value, "1", 1)) {
 		if ((udcdir = opendir(UDC_DIR)) != NULL) {
-			while (file = readdir(udcdir)) {
-				// Skip over . and .. directories
-				// and find first non-dir entry
-				if (file->d_type != DT_DIR)
-					break;
+			n = scandir(UDC_DIR, &filelist, NULL, alphasort);
+			if (n == -1) {
+				D("[ usb_thread - scandir failed! ]\n");
+				file = NULL;
+			} else {
+				i = 0;
+				while (i < n) {
+					if (filelist[i]->d_type != DT_DIR) {
+						file = filelist[i];
+						break;
+					}
+					i++;
+				}
 			}
 			if (file) {
 				if ((fd = unix_open(UDC_FILE_PATH, O_RDWR)) != -1) {
