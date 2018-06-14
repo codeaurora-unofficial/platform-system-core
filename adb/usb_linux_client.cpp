@@ -397,13 +397,13 @@ err:
     return;
 }
 
+#define USB_COMPOSITION_BIND_LOCK "/data/usb_bind_in_progress"
 #define UDC_DIR "/sys/class/udc"
 #define UDC_FILE_PATH "/sys/kernel/config/usb_gadget/g1/UDC"
 
 static void *usb_ffs_open_thread(void *x)
 {
     struct usb_handle *usb = (struct usb_handle *)x;
-    char value[PROPERTY_VALUE_MAX];
     DIR *udcdir;
     struct dirent *file, **filelist;
     int fd, n, i;
@@ -423,14 +423,7 @@ static void *usb_ffs_open_thread(void *x)
 
             adb_sleep_ms(1000);
         }
-        property_set("sys.usb.ffs.ready", "1");
-
-	// If ConfigFS is enabled and we are running OE
-	// then perform UDC bind explicitly. The composition
-	// script check is done to detect we are running OE
-	// as it will be present only for OE userspace.
-	property_get("sys.usb.configfs", value, "");
-	if (!strncmp(value, "1", 1)) {
+	if (access(USB_COMPOSITION_BIND_LOCK, F_OK ) == -1) {
 		if ((udcdir = opendir(UDC_DIR)) != NULL) {
 			n = scandir(UDC_DIR, &filelist, NULL, alphasort);
 			if (n == -1) {
