@@ -397,7 +397,7 @@ err:
     return;
 }
 
-#define USB_COMPOSITION_SCRIPT "/data/usb/boot_hsusb_composition"
+#define USB_COMPOSITION_BIND_LOCK "/data/usb_bind_in_progress"
 #define UDC_DIR "/sys/class/udc"
 #define UDC_FILE_PATH "/sys/kernel/config/usb_gadget/g1/UDC"
 
@@ -424,15 +424,11 @@ static void *usb_ffs_open_thread(void *x)
 
             adb_sleep_ms(1000);
         }
-        property_set("sys.usb.ffs.ready", "1");
 
-	// If ConfigFS is enabled and we are running OE
-	// then perform UDC bind explicitly. The composition
-	// script check is done to detect we are running OE
-	// as it will be present only for OE userspace.
-	property_get("sys.usb.configfs", value, "");
-	if (!strncmp(value, "1", 1) &&
-		access(USB_COMPOSITION_SCRIPT, F_OK ) != -1) {
+	// If UDC bind from userspace composition rules fails then we perform
+	// UDC bind explicitly from here. The USB_COMPOSITION_BIND_LOCK check is done to
+	// detect we are running after writing the composition rules from userspace.
+	if (access(USB_COMPOSITION_BIND_LOCK, F_OK ) == -1) {
 		if ((udcdir = opendir(UDC_DIR)) != NULL) {
 			while (file = readdir(udcdir)) {
 				// Skip over . and .. directories
