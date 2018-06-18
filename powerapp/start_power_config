@@ -152,6 +152,13 @@ case "$1" in
          "334" )
                 echo -n "Starting powerconfig for SDX24: "
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+                #CPU Governor settings
+                echo ondemand >  /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+                #Enable Suspend
+                echo mem > /sys/power/autosleep
+                #Enable bus-dcvs
+                echo "compute" > /sys/class/devfreq/soc:qcom,cpubw/governor
+                echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
 
 		echo "++++ $0 -> ENABLE-FTRACE" > /dev/kmsg
 		#Enable FTRACE_ENABLE on SDX24
