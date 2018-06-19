@@ -214,10 +214,12 @@ property_db* process_setprop_msg(char* buff)
             load_persist_properties();
             //save ds to reflect new properites added before file is available.
             save_persist_ds_to_file();
+            sync();
         }
         if ( persist_storage_ready && strncmp("persist.",
                 node->unit.property_name, strlen("persist.")) == 0 ) {
             save_persist_ds_to_file();
+            sync();
             LOG("Completed storing data to persist file");
         }
 
