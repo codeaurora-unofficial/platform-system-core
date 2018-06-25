@@ -590,29 +590,47 @@ esac
 case "$target" in
     "apq8009" | "msm8909" )
         ProductName=`grep ro.product.name /build.prop | sed "s/ro.product.name=//"`
+	#if the kernel version >=4.9,use the schedutil governor
+	KernelVersionStr=`cat /proc/sys/kernel/osrelease`
+	KernelVersionS=${KernelVersionStr:2:2}
+	KernelVersionA=${KernelVersionStr:0:1}
+	KernelVersionB=${KernelVersionS%.*}
         case $ProductName in
             *robot*)
-                # HMP scheduler settings for 8909 similiar to 8916
-                echo 2 > /proc/sys/kernel/sched_window_stats_policy
-                echo 3 > /proc/sys/kernel/sched_ravg_hist_size
 
-                # Apply governor settings for 8909
+		echo 1 > /sys/devices/system/cpu/cpu0/online
+		# Apply governor settings for 8909
 
-                # disable thermal core_control to update scaling_min_freq
-                echo 0 > /sys/module/msm_thermal/core_control/enabled
-                echo 1 > /sys/devices/system/cpu/cpu0/online
-                echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-                echo 400000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-                # enable thermal core_control now
-                echo 1 > /sys/module/msm_thermal/core_control/enabled
+		if [ $KernelVersionA -ge 4 ] && [ $KernelVersionB -ge 9 ]; then
+			echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+			echo 400000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			echo 0 > /sys/devices/system/cpu/cpufreq/schedutil/rate_limit_us
+			echo 800000 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_freq
+			echo -6 > /sys/devices/system/cpu/cpu0/sched_load_boost
+			echo -6 > /sys/devices/system/cpu/cpu1/sched_load_boost
+			echo -6 > /sys/devices/system/cpu/cpu2/sched_load_boost
+			echo -6 > /sys/devices/system/cpu/cpu3/sched_load_boost
+			echo 85 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_load
+		else
+			# HMP scheduler settings for 8909 similiar to 8916
+			echo 2 > /proc/sys/kernel/sched_window_stats_policy
+			echo 3 > /proc/sys/kernel/sched_ravg_hist_size
 
-                echo "25000" > /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
-                echo 90 > /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
-                echo 30000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
-                echo 800000 > /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq
-                echo 0 > /sys/devices/system/cpu/cpufreq/interactive/io_is_busy
-                echo "1 400000:85 998400:90 1094400:80" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
-                echo 50000 > /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
+			# disable thermal core_control to update scaling_min_freq
+			echo 0 > /sys/module/msm_thermal/core_control/enabled
+			echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+			echo 400000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			# enable thermal core_control now
+			echo 1 > /sys/module/msm_thermal/core_control/enabled
+
+			echo "25000" > /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
+			echo 90 > /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
+			echo 30000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
+			echo 800000 > /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq
+			echo 0 > /sys/devices/system/cpu/cpufreq/interactive/io_is_busy
+			echo "1 400000:85 998400:90 1094400:80" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
+			echo 50000 > /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
+		fi
 
                 # Bring up all cores online
                 echo 1 > /sys/devices/system/cpu/cpu1/online
@@ -626,25 +644,40 @@ case "$target" in
                 done
                 ;;
             *)
-                echo 2 > /proc/sys/kernel/sched_window_stats_policy
-                echo 3 > /proc/sys/kernel/sched_ravg_hist_size
+		echo 1 > /sys/devices/system/cpu/cpu0/online
+		# Apply governor settings for 8909
 
-                # Apply governor settings for 8909
+		if [ $KernelVersionA -ge 4 ] && [ $KernelVersionB -ge 9 ]; then
+			echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+			echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			echo 0 > /sys/devices/system/cpu/cpufreq/schedutil/rate_limit_us
+			echo 1094400 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_freq
+			echo -6 > /sys/devices/system/cpu/cpu0/sched_load_boost
+			echo -6 > /sys/devices/system/cpu/cpu1/sched_load_boost
+			echo -6 > /sys/devices/system/cpu/cpu2/sched_load_boost
+			echo -6 > /sys/devices/system/cpu/cpu3/sched_load_boost
+			echo 70 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_load
+		else
+			echo 2 > /proc/sys/kernel/sched_window_stats_policy
+			echo 3 > /proc/sys/kernel/sched_ravg_hist_size
 
-                # disable thermal core_control to update scaling_min_freq
-                echo 0 > /sys/module/msm_thermal/core_control/enabled
-                echo 1 > /sys/devices/system/cpu/cpu0/online
-                echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-                echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-                echo "25000" > /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
-                echo 70 > /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
-                echo 20000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
-                echo 1094400 > /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq
-                echo 0 > /sys/devices/system/cpu/cpufreq/interactive/io_is_busy
-                echo "1 400000:85 998400:90 1094400:80" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
-                echo 50000 > /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
-                # enable thermal core_control now
-                echo 1 > /sys/module/msm_thermal/core_control/enabled
+			# disable thermal core_control to update scaling_min_freq
+			echo 0 > /sys/module/msm_thermal/core_control/enabled
+
+			echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+			echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			echo "25000" > /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
+			echo 70 > /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
+			echo 20000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
+			echo 1094400 > /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq
+			echo 0 > /sys/devices/system/cpu/cpufreq/interactive/io_is_busy
+			echo "1 400000:85 998400:90 1094400:80" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
+			echo 50000 > /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
+
+			# enable thermal core_control now
+			echo 1 > /sys/module/msm_thermal/core_control/enabled
+		fi
+
                 # Bring up all cores online
                 echo 1 > /sys/devices/system/cpu/cpu1/online
                 echo 1 > /sys/devices/system/cpu/cpu2/online
