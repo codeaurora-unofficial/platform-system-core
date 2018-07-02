@@ -93,6 +93,9 @@ ifdef BOARD_USES_PRODUCTIMAGE
 else
   LOCAL_POST_INSTALL_CMD += ; ln -sf /system/product $(TARGET_ROOT_OUT)/product
 endif
+ifdef BOARD_USES_METADATA_PARTITION
+  LOCAL_POST_INSTALL_CMD += ; mkdir -p $(TARGET_ROOT_OUT)/metadata
+endif
 
 # For /odm partition.
 LOCAL_POST_INSTALL_CMD += ; mkdir -p $(TARGET_ROOT_OUT)/odm
@@ -201,6 +204,7 @@ $(2): $(1)
 	$$(hide) sed -i -e 's?%VNDK_CORE_LIBRARIES%?$$(PRIVATE_VNDK_CORE_LIBRARIES)?g' $$@
 	$$(hide) sed -i -e 's?%SANITIZER_RUNTIME_LIBRARIES%?$$(PRIVATE_SANITIZER_RUNTIME_LIBRARIES)?g' $$@
 	$$(hide) sed -i -e 's?%VNDK_VER%?$$(PRIVATE_VNDK_VERSION)?g' $$@
+	$$(hide) sed -i -e 's?%PRODUCT%?$$(TARGET_COPY_OUT_PRODUCT)?g' $$@
 
 llndk_libraries_list :=
 vndksp_libraries_list :=
