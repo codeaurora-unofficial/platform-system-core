@@ -61,17 +61,3 @@ on boot
 # signaled by the zygote stopping.
 on property:init.svc.zygote=stopping
     setprop sys.logbootcomplete 0
-
-# Record boot complete metrics.
-on property:sys.boot_completed=1 && property:sys.logbootcomplete=1
-    # Record boot_complete and related stats (decryption, etc).
-    exec - system log -- /system/bin/bootstat --record_boot_complete
-
-    # Record the boot reason.
-    exec - system log -- /system/bin/bootstat --record_boot_reason
-
-    # Record time since factory reset.
-    exec - system log -- /system/bin/bootstat --record_time_since_factory_reset
-
-    # Log all boot events.
-    exec - system log -- /system/bin/bootstat -l
