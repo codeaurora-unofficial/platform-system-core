@@ -40,6 +40,12 @@ else
 	delay="0"
 fi
 
+if [ "$#" -ge 3 ]; then
+        from_adb=$3
+else
+        from_adb="n"
+fi
+
 run_9x15() {
 	echo 0 > /sys/class/android_usb/android$num/enable
 	echo 0x9067 > /sys/class/android_usb/android$num/idProduct
@@ -134,7 +140,6 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		/etc/launch_adbd start
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
