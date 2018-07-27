@@ -38,6 +38,7 @@
 #include <malloc.h>
 #include "property_service.h"
 
+extern property_db* glisthead;
 /**
  * Check if the list is empty
  * @param None
