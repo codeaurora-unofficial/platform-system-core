@@ -151,6 +151,12 @@ case "$1" in
 		        ;;
 	esac
 
+	case `source /sbin/usb/target` in
+		*sm8150* )
+			echo peripheral > /sys/bus/platform/devices/a600000.ssusb/mode
+			;;
+	esac
+
 	# enable debug message
 	if [ -f /sbin/usb/debuger/default_debug ];
 	then
