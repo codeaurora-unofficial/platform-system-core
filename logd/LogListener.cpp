@@ -47,7 +47,9 @@ bool LogListener::onDataAvailable(SocketClient *cli) {
     memset(buffer, 0, sizeof(buffer));
 
     char control[CMSG_SPACE(sizeof(struct ucred))];
-    struct msghdr hdr = {
+    struct msghdr hdr;
+    memset(&hdr, 0, sizeof(hdr));
+    hdr = {
         NULL,
         0,
         &iov,
