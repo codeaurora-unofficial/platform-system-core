@@ -185,9 +185,11 @@ void prop_trigger(char* name, char* val)
             return -1;
             break;
         default:
+            //In parent. Wait for the child to terminate before proceeding.
+            wait(NULL);
             break;
-   }
-   return 0;
+    }
+    return 0;
 }
 
 property_db* process_setprop_msg(char* buff)
