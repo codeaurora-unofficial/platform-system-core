@@ -67,8 +67,8 @@ bool __create_list_and_add( const char* search_name, const char* property_value)
     property_db *ln = (property_db*) calloc(1, sizeof(property_db)*
         sizeof(unsigned char));
 
-    strncpy(ln->unit.property_name, search_name, strlen(search_name));
-    strncpy(ln->unit.property_value, property_value, strlen(property_value));
+    strlcpy(ln->unit.property_name, search_name, sizeof search_name);
+    strlcpy(ln->unit.property_value, property_value, sizeof property_value);
 
     ln->next = NULL;
 
@@ -96,8 +96,8 @@ bool __update_prop_value(const char* search_name, const char* value)
         } else {
             memset(ln->unit.property_value, 0,
                   sizeof(ln->unit.property_value));
-            strncpy(ln->unit.property_value,  property_value,
-                   strlen(property_value));
+            strlcpy(ln->unit.property_value,  property_value,
+                   sizeof property_value);
             LOG("Value copied to the db prop name %s", search_name);
             retval = 0;
         }
@@ -154,8 +154,8 @@ bool __list_add(property_db* list)
             LOG("Node Present, updating value");
             memset(node->unit.property_value, 0,
                    sizeof(node->unit.property_value));
-            strncpy(node->unit.property_value, list->unit.property_value,
-                    strlen(list->unit.property_value));
+            strlcpy(node->unit.property_value, list->unit.property_value,
+                    sizeof(list->unit.property_value));
             free(list);
         }
     }
