@@ -240,4 +240,46 @@ void __dump_nodes()
                 ln->unit.property_value, ln->unit.callback_to_be_invoked);
     }
 }
+bool __save_persist_nodes_to_file()
+{
+    property_db *ln = glisthead;
+    bool retval = false;
+    int filewrite_status = -1;
+
+    FILE *fp = fopen(PROP_FILE_PERSIST_PATH, "w");
+    LOG("Save DS to persist file %s\n",PROP_FILE_PERSIST_PATH);
+
+    if (NULL != fp)
+    {
+        LOG("File truncate mode\n");
+        for (; ln != NULL; ln = ln->next)
+        {
+            if ( strncmp("persist.", ln->unit.property_name,
+                 strlen("persist.")) == 0 ) {
+
+                unsigned char stringtowrite[MAX_ALLOWED_LINE_LEN];
+                memset(stringtowrite, 0 , sizeof(stringtowrite));
+
+                snprintf(stringtowrite, MAX_ALLOWED_LINE_LEN, "%s=%s",
+                     ln->unit.property_name,ln->unit.property_value );
+
+                LOG("Writing to persist %s \n", stringtowrite);
+
+                filewrite_status = fputs(stringtowrite, fp);
+                if (filewrite_status < 0)
+                {
+                    retval = false;
+                    break;
+                } else {
+                    retval = true;
+                }
+            }
+        }
+        fclose(fp);
+    } else {
+        ALOGE("Persist File doesnt exist");
+        retval = false;
+    }
+    return retval;
+}
 
