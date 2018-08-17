@@ -2,6 +2,7 @@
 systemheaders_includedir=$(includedir)/system
 systemheaders_include_HEADERS := $(top_srcdir)/include/system/camera.h
 systemheaders_include_HEADERS += $(top_srcdir)/include/system/graphics.h
+systemheaders_include_HEADERS += $(top_srcdir)/include/system/graphics-base.h
 systemheaders_include_HEADERS += $(top_srcdir)/include/system/thread_defs.h
 systemheaders_include_HEADERS += $(top_srcdir)/include/system/window.h
 
