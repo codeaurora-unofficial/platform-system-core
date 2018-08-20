@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012-2015,2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2018, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -24,14 +24,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# DESCRIPTION: RNDIS + DIAG + ADB [Android]
+# DESCRIPTION:  DIAG + ADB + MBIM + GNSS + DUN + DPL
 
-echo "Switching to composition number 0x902D" > /dev/kmsg
+echo "Switching to composition number 0x90EC" > /dev/kmsg
 
 if [ "$1" = "y" ]; then
 	num="1"
+	mode="hsic"
 else
 	num="0"
+	mode="hsusb"
 fi
 
 if [ "$#" -ge 2 ]; then
@@ -46,75 +48,50 @@ else
 	from_adb="n"
 fi
 
-run_9x15() {
-	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 0x902D > /sys/class/android_usb/android$num/idProduct
-	echo 0x05C6 > /sys/class/android_usb/android$num/idVendor
-	echo diag > /sys/class/android_usb/android0/f_diag/clients
-	echo rndis_qc,diag,adb > /sys/class/android_usb/android$num/functions
-	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
-	echo 1 > /sys/class/android_usb/android0/f_rndis_qc/wceis
-	sleep $delay
-	echo 1 > /sys/class/android_usb/android$num/enable
-}
-
-run_9x25() {
-	if [ $from_adb = "n" ]
-	then
-		pkill adbd
-	fi
-	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 902D > /sys/class/android_usb/android$num/idProduct
-	echo 05C6 > /sys/class/android_usb/android$num/idVendor
-	echo diag > /sys/class/android_usb/android0/f_diag/clients
-	echo rndis,diag,adb > /sys/class/android_usb/android$num/functions
-	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
-	echo 1 > /sys/class/android_usb/android0/f_rndis/wceis
-	sleep $delay
-	echo 1 > /sys/class/android_usb/android$num/enable
-	if [ $from_adb = "n" ]
-	then
-		/etc/launch_adbd start
-	fi
-}
-
-run_9x35() {
-	if [ $from_adb = "n" ]
-	then
-		pkill adbd
-	fi
-	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 902D > /sys/class/android_usb/android$num/idProduct
-	echo 05C6 > /sys/class/android_usb/android$num/idVendor
-	echo diag > /sys/class/android_usb/android$num/f_diag/clients
-	echo rndis_qc,diag,ffs > /sys/class/android_usb/android$num/functions
-	echo BAM2BAM_IPA > /sys/class/android_usb/android$num/f_rndis_qc/rndis_transports
-	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
-	echo 1 > /sys/class/android_usb/android$num/f_rndis_qc/wceis
-	sleep $delay
-	echo 1 > /sys/class/android_usb/android$num/enable
-	if [ $from_adb = "n" ]
-	then
-		/etc/launch_adbd start
-	fi
-}
-
 run_9650() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
 	fi
 	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 902D > /sys/class/android_usb/android$num/idProduct
+	echo 90EC > /sys/class/android_usb/android$num/idProduct
 	echo 05C6 > /sys/class/android_usb/android$num/idVendor
-	echo diag > /sys/class/android_usb/android$num/f_diag/clients
-	echo rndis_gsi,diag,ffs > /sys/class/android_usb/android$num/functions
+	echo 239 > /sys/class/android_usb/android$num/bDeviceClass
+	echo 2 > /sys/class/android_usb/android$num/bDeviceSubClass
+	echo 1 > /sys/class/android_usb/android$num/bDeviceProtocol
+	echo diag > /sys/class/android_usb/android0/f_diag/clients
+	echo smd > /sys/class/android_usb/android0/f_serial/transports
+	echo diag,ffs,mbim_gsi,gps,serial,dpl_gsi > /sys/class/android_usb/android$num/functions
 	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
 	sleep $delay
 	echo 1 > /sys/class/android_usb/android$num/enable
 	if [ $from_adb = "n" ]
 	then
-		/etc/launch_adbd start
+		/etc/init.d/adbd start
+	fi
+}
+
+run_sdx20() {
+	if [ $from_adb = "n" ]
+	then
+		pkill adbd
+	fi
+	echo 0 > /sys/class/android_usb/android$num/enable
+	echo 90EC > /sys/class/android_usb/android$num/idProduct
+	echo 05C6 > /sys/class/android_usb/android$num/idVendor
+	echo 239 > /sys/class/android_usb/android$num/bDeviceClass
+	echo 2 > /sys/class/android_usb/android$num/bDeviceSubClass
+	echo 1 > /sys/class/android_usb/android$num/bDeviceProtocol
+	echo diag > /sys/class/android_usb/android0/f_diag/clients
+	echo char_bridge > /sys/class/android_usb/android0/f_serial/transports
+	echo glink >  /sys/class/android_usb/android$num/f_gps/transport
+	echo diag,ffs,mbim_gsi,gps,serial,dpl_gsi > /sys/class/android_usb/android$num/functions
+	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
+	sleep $delay
+	echo 1 > /sys/class/android_usb/android$num/enable
+	if [ $from_adb = "n" ]
+	then
+		/etc/init.d/adbd start
 	fi
 }
 
@@ -127,15 +104,20 @@ run_configfs() {
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
-	rm os_desc/c* 2> /dev/null
 	rm configs/c*/f* 2> /dev/null
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
-	echo 0x902d > idProduct
-	echo "RNDIS_DIAG_ADB" > configs/c.1/strings/0x409/configuration
-	ln -s functions/gsi.rndis configs/c.1/f1
-	ln -s functions/diag.diag configs/c.1/f2
-	ln -s functions/ffs.adb configs/c.1/f3
+	echo 0x90EC > idProduct
+	echo 239 > bDeviceClass
+	echo 2 > bDeviceSubClass
+	echo 1 > bDeviceProtocol
+	echo "DIAG_ADB_MBIM_GNSS_DUN_DPL" > configs/c.1/strings/0x409/configuration
+	ln -s functions/diag.diag configs/c.1/f1
+	ln -s functions/ffs.adb configs/c.1/f2
+	ln -s functions/gsi.mbim configs/c.1/f3
+	ln -s functions/gsi.gps configs/c.1/f4
+	ln -s functions/cser.dun.0 configs/c.1/f5
+	ln -s functions/gsi.dpl configs/c.1/f6
 	echo 0xA0 > configs/c.1/bmAttributes
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
@@ -144,32 +126,17 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	*9x15* )
-		run_9x15 &
-		;;
-	*9x25* )
-		run_9x25 &
-		;;
-	*9x35* )
-		run_9x35 &
-		;;
-	*9607* )
-		run_9x25 &
-		;;
-	*8909* )
-		run_9x25 &
-		;;
-	*9640* )
-		run_9x35 &
-		;;
 	*9650* )
 		run_9650 &
+		;;
+	*sdx20* )
+		run_sdx20 &
 		;;
 	*sdxpoorwills* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
 	* )
-		run_9650 &
+		echo "This composition is not supported"
 		;;
 esac
