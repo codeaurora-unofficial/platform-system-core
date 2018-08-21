@@ -661,6 +661,23 @@ case "$target" in
 ;;
 esac
 
+case "$target" in
+    "sda845" | "sdm845")
+        if [ -f /sys/devices/soc0/soc_id ]; then
+            soc_id=`cat /sys/devices/soc0/soc_id`
+        else
+            soc_id=`cat /sys/devices/system/soc/soc0/id`
+        fi
+
+	case "$soc_id" in
+            "321" | "341" )
+		# Enable low power modes
+		echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+            ;;
+	esac
+    ;;
+esac
+
 echo "init_qcom_post_boot completed"
 ;;
 stop)
