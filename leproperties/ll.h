@@ -111,4 +111,11 @@ property_db* __get_list_head();
  */
 void __dump_nodes();
 
+/**
+ * Function to traverse linklist and dump property name
+ * starting with persist to file
+ * @return True on success and false otherwise
+ */
+bool __save_persist_nodes_to_file();
+
 #endif //#define LE_PROP_LL_H
