@@ -188,7 +188,7 @@ run_configfs() {
 	echo 0xA5 > os_desc/b_vendor_code
 	echo MSFT100 > os_desc/qw_sign
 	echo ALTRCFG > functions/gsi.mbim/os_desc/interface.MBIM/compatible_id
-	echo 30000000 > functions/gsi.mbim/os_desc/interface.MBIM/sub_compatible_id
+	echo 3 > functions/gsi.mbim/os_desc/interface.MBIM/sub_compatible_id
 	echo 1 > functions/qdss.qdss/enable_debug_inface
 	echo 0xA0 > configs/c.1/bmAttributes
 	echo 0xA0 > configs/c.2/bmAttributes
