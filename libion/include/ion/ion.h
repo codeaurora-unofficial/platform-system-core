@@ -27,6 +27,7 @@
 __BEGIN_DECLS
 
 struct ion_handle;
+typedef int ion_user_handle_t;
 
 int ion_open();
 int ion_close(int fd);

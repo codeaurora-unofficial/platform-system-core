@@ -69,3 +69,5 @@ case "$1" in
     echo "no triggers for $1 val: $2"
     ;;
 esac
+
+exit 0
