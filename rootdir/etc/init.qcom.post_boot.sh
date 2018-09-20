@@ -348,8 +348,8 @@ case "$target" in
                 echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
                 echo 0 > /sys/devices/system/cpu/cpufreq/schedutil/rate_limit_us
                 #set the hispeed freq
-                echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_freq
-                echo 85 > /sys/devices/system/cpu/cpu4/cpufreq/schedutil/hispeed_load
+                echo 1113600 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_freq
+                echo 85 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_load
                 echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 
                 # sched_load_boost as -6 is equivalent to target load as 85.
