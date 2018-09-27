@@ -157,7 +157,7 @@ case "$1" in
                 echo "compute" > /sys/class/devfreq/soc:qcom,cpubw/governor
                 echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
 
-		echo "++++ $0 -> ENABLE-FTRACE" > /dev/kmsg
+		echo "++++ $0 -> FTRACE-Enable START" > /dev/kmsg
 		#Enable FTRACE_ENABLE on SDX24
 		#bail out if its perf config
 		if [ ! -d /sys/module/msm_rtb ]
@@ -190,6 +190,33 @@ case "$1" in
 		echo 1 > /sys/kernel/debug/tracing/events/irq/enable
 		echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_entry/enable
 		echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_exit/enable
+		echo "++++ $0 -> FTRACE-Enable END" > /dev/kmsg
+
+		echo "++++ $0 -> DCC-Enable START" > /dev/kmsg
+
+		DCC_PATH="/sys/bus/platform/devices/10a2000.dcc_v2"
+
+		if [ ! -d $DCC_PATH ]; then
+		echo "DCC does not exist on this build."
+		        return
+		fi
+
+		echo 0 > $DCC_PATH/enable
+		echo 2 > $DCC_PATH/curr_list
+		echo cap > $DCC_PATH/func_type
+		echo sram > $DCC_PATH/data_sink
+		echo 1 > $DCC_PATH/config_reset
+
+		echo 0x17840400 1 > $DCC_PATH/config  #APCS_RSCC_RSC_SEQ_OVERRIDE_START_ADDR_DRVd
+		echo 0x17840408 1 > $DCC_PATH/config  #APCS_RSCC_RSC_SEQ_PROGRAM_COUNTER_DRVd
+		echo 0x0B204520  1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_START_ADDR
+		echo 0x0B204524  1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_OVERRIDE_START_ADDR
+		echo 0x0B201024 1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_DBG_PROGRAM_COUNTER_DRVd
+		echo 0x0B21024  1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_DBG_PROGRAM_COUNTER_DRVd
+
+		echo 1 > $DCC_PATH/enable
+		echo "++++ $0 -> DCC-Enable END" > /dev/kmsg
+
 		echo "++++ $0 -> END" > /dev/kmsg
 	        ;;
 	 esac
