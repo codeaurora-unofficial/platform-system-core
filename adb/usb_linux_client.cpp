@@ -574,7 +574,7 @@ static void usb_ffs_init()
 
 void usb_init()
 {
-    if (access(USB_FFS_ADB_EP0, F_OK) == 0)
+    if (!adb_use_pcie && access(USB_FFS_ADB_EP0, F_OK) == 0)
         usb_ffs_init();
     else
         usb_adb_init();

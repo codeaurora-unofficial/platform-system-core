@@ -730,7 +730,7 @@ case "$target" in
                 echo 1 > /sys/devices/system/cpu/cpu3/online
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
 
-                for cpubw in /sys/class/devfreq/*qcom,cpubw*
+                for cpubw in /sys/class/devfreq/soc:qcom,cpubw*
                 do
                     echo "bw_hwmon" > $cpubw/governor
                 done
@@ -777,7 +777,7 @@ case "$target" in
                 # Enable all LPMs by default
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
 
-                for cpubw in /sys/class/devfreq/*qcom,cpubw*
+                for cpubw in /sys/class/devfreq/soc:qcom,cpubw*
                 do
                     echo "bw_hwmon" > $cpubw/governor
                 done
