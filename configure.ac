@@ -132,8 +132,6 @@ AC_MSG_NOTICE([fec image size $FEC_SIZE detected.])
 
 AC_CONFIG_FILES([ \
     Makefile \
-    libutils/Makefile \
-    libutils/libutils.pc \
     logwrapper/Makefile \
     logwrapper/logwrapper.pc \
     libsync/Makefile \

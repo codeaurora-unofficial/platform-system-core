@@ -93,8 +93,7 @@ case "$1" in
 		fi
 		cat /etc/adb_devid > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
-		echo "$socplatform" > strings/0x409/product
-		echo "$product_string" > /config/usb_gadget/g1/strings/0x409/product
+		echo "$product_string" > strings/0x409/product
 		setprop sys.usb.configfs 1
 		cd /
 	fi
@@ -131,14 +130,31 @@ case "$1" in
 			;;
 		*9650* )
 			echo 16384 > /sys/module/g_android/parameters/gsi_in_rndis_aggr_size
+			if [ -e /dev/mhi_ctrl ]; then
+				echo 901F > /etc/usb/boot_hsusb_comp
+			fi
 			;;
 		*sdx20* )
 			echo Y > /sys/module/libcomposite/parameters/enable_l1_for_hs
 			echo Y > /sys/module/dwc3/parameters/enable_dwc3_u1u2
+			if [ -e /dev/mhi_ctrl ]; then
+				echo 901F > /etc/usb/boot_hsusb_comp
+			fi
 			;;
-		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* )
+		*sdxpoorwills* )
+			if [ -e /dev/mhi_ctrl ]; then
+				echo 901F > /etc/usb/boot_hsusb_comp
+			fi
+			;;
+		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *sm8150* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
+	esac
+
+	case `source /sbin/usb/target` in
+		*sm8150* )
+			echo peripheral > /sys/bus/platform/devices/a600000.ssusb/mode
+			;;
 	esac
 
 	# enable debug message
