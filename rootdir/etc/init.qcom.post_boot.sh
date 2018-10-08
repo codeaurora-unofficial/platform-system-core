@@ -762,6 +762,9 @@ case "$target" in
         echo "compute" > /sys/class/devfreq/soc:qcom,mincpubw/governor
         echo 10 > /sys/class/devfreq/soc:qcom,mincpubw/polling_interval
 
+        # Enable all LPMs by default
+        echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+
         echo 100 > /proc/sys/vm/swappiness
     ;;
 esac
