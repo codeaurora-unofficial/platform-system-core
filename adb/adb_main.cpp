@@ -86,6 +86,7 @@ void adb_set_affinity(void)
 #endif
 #else /* ADB_HOST */
 static const char *root_seclabel = NULL;
+bool adb_use_pcie;
 
 static void drop_capabilities_bounding_set_if_needed() {
 #ifdef ALLOW_ADBD_ROOT
@@ -377,6 +378,8 @@ int main(int argc, char **argv) {
     // adbd
     signal(SIGINT, SIG_DFL);
     signal(SIGQUIT, SIG_DFL);
+    adb_use_pcie = false;
+
     while (true) {
         static struct option opts[] = {
             {"root_seclabel", required_argument, nullptr, 's'},
@@ -403,6 +406,15 @@ int main(int argc, char **argv) {
         default:
             break;
         }
+    }
+
+    int fd = unix_open("/data/adb.conf", O_RDONLY);
+    if (fd > 0) {
+        char buf[ADB_MAX_BUF_LEN];
+        if (unix_read(fd, buf, sizeof(buf)) != -1)
+            if (strcmp(buf, "pcie=true") == 0)
+                adb_use_pcie = true;
+        unix_close(fd);
     }
 
     close_stdin();
