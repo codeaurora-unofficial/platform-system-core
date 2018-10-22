@@ -29,3 +29,21 @@ cc_library_static {
     shared_libs: ["android.hardware.graphics.allocator@2.0"],
     header_libs: ["libhardware_headers"],
 }
+
+cc_library_shared {
+    name: "libgrallocusage_vendor",
+    vendor_available: true,
+    cppflags: [
+        "-Weverything",
+        "-Werror",
+        "-Wno-c++98-compat-pedantic",
+        // Hide errors in headers we include
+        "-Wno-global-constructors",
+        "-Wno-exit-time-destructors",
+        "-Wno-padded",
+    ],
+    srcs: ["GrallocUsageConversion.cpp"],
+    export_include_dirs: ["include"],
+    shared_libs: ["android.hardware.graphics.allocator@2.0"],
+    header_libs: ["libhardware_headers"],
+}
