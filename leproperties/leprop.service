@@ -6,6 +6,8 @@ Before=persist-prop.service
 Requires=systemrw-build.prop.service persist-prop.service
 
 [Service]
+User=leprop
+Group=leprop
 Restart=always
 ExecStart=/sbin/leprop-service
 
