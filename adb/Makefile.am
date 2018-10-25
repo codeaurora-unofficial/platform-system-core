@@ -55,6 +55,8 @@ adbd_SOURCES  += set_verity_enable_state_service.cpp
 adbd_CPPFLAGS := -I$(top_srcdir)/include
 adbd_CPPFLAGS += -I$(top_srcdir)/base/include
 adbd_CPPFLAGS += -I$(top_srcdir)/fs_mgr/include
+adbd_CPPFLAGS += -I$(top_srcdir)/mkbootimg
+adbd_CPPFLAGS += $(GLIB_CFLAGS) -Dstrlcat=g_strlcat -Dstrlcpy=g_strlcpy -include glib.h
 adbd_CPPFLAGS += -Wall -Wno-unused-parameter
 adbd_CPPFLAGS += -Wno-deprecated-declarations
 adbd_CPPFLAGS += -std=c++14 -fpermissive
