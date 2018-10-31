@@ -26,7 +26,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-set -e
 
 configure_memory_parameters () {
     # Set Memory paremeters.
@@ -804,10 +803,10 @@ case "$target" in
       #echo 8 > /sys/devices/system/cpu/cpu0/core_ctl/task_thres
 
       # Setting b.L scheduler parameters
-      echo 96 > /proc/sys/kernel/sched_upmigrate
       echo 90 > /proc/sys/kernel/sched_downmigrate
-      echo 140 > /proc/sys/kernel/sched_group_upmigrate
+      echo 96 > /proc/sys/kernel/sched_upmigrate
       echo 120 > /proc/sys/kernel/sched_group_downmigrate
+      echo 140 > /proc/sys/kernel/sched_group_upmigrate
       echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
 
       # configure governor settings for little cluster
@@ -854,9 +853,6 @@ case "$target" in
                 echo 20 > $cpubw/bw_hwmon/hist_memory
                 echo 0 > $cpubw/bw_hwmon/hyst_length
                 echo 80 > $cpubw/bw_hwmon/down_thres
-                echo 0 > $cpubw/bw_hwmon/low_power_ceil_mbps
-                echo 68 > $cpubw/bw_hwmon/low_power_io_percent
-                echo 20 > $cpubw/bw_hwmon/low_power_delay
                 echo 0 > $cpubw/bw_hwmon/guard_band_mbps
                 echo 250 > $cpubw/bw_hwmon/up_scale
                 echo 1600 > $cpubw/bw_hwmon/idle_mbps
@@ -886,10 +882,6 @@ case "$target" in
             done
 
       echo "cpufreq" > /sys/class/devfreq/soc:qcom,mincpubw/governor
-
-      # cpuset parameters
-      echo 0-5 > /dev/cpuset/background/cpus
-      echo 0-5 > /dev/cpuset/system-background/cpus
 
       # Turn off scheduler boost at the end
       echo 0 > /proc/sys/kernel/sched_boost
