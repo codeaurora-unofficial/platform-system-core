@@ -347,10 +347,13 @@ case "$target" in
                 echo 1 > /sys/devices/system/cpu/cpu0/online
                 echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
                 echo 0 > /sys/devices/system/cpu/cpufreq/schedutil/rate_limit_us
-                #set the hispeed freq
-                echo 1113600 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_freq
+                # set the hispeed freq
+                echo 1094400 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_freq
                 echo 85 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_load
-                echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+                echo 1094400 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+
+                # enable console suspend
+                echo Y > /sys/module/printk/parameters/console_suspend
 
                 # sched_load_boost as -6 is equivalent to target load as 85.
                 echo -6 > /sys/devices/system/cpu/cpu0/sched_load_boost
