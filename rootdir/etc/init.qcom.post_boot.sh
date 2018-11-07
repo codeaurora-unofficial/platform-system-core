@@ -727,7 +727,14 @@ case "$target" in
                 echo 1 > /sys/devices/system/cpu/cpu1/online
                 echo 1 > /sys/devices/system/cpu/cpu2/online
                 echo 1 > /sys/devices/system/cpu/cpu3/online
-                echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+                # Enable all LPMs by default
+		if [ -f /sys/module/lpm_levels/parameters/sleep_disabled ]; then
+                    echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+                elif [ -f /sys/module/lpm_levels_legacy/parameters/sleep_disabled ]; then
+                    echo N > /sys/module/lpm_levels_legacy/parameters/sleep_disabled
+                else
+                    echo "can not enable LPMs"
+                fi
 
                 for cpubw in /sys/class/devfreq/soc:qcom,cpubw*
                 do
@@ -774,7 +781,13 @@ case "$target" in
                 echo 1 > /sys/devices/system/cpu/cpu2/online
                 echo 1 > /sys/devices/system/cpu/cpu3/online
                 # Enable all LPMs by default
-                echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+		if [ -f /sys/module/lpm_levels/parameters/sleep_disabled ]; then
+                    echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+                elif [ -f /sys/module/lpm_levels_legacy/parameters/sleep_disabled ]; then
+                    echo N > /sys/module/lpm_levels_legacy/parameters/sleep_disabled
+                else
+                    echo "can not enable LPMs"
+                fi
 
                 for cpubw in /sys/class/devfreq/soc:qcom,cpubw*
                 do
