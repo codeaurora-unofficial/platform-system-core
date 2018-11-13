@@ -77,7 +77,7 @@ endif
 #
 # create some directories (some are mount points) and symlinks
 LOCAL_POST_INSTALL_CMD := mkdir -p $(addprefix $(TARGET_ROOT_OUT)/, \
-    sbin dev proc sys system data odm oem acct config storage mnt $(BOARD_ROOT_EXTRA_FOLDERS)); \
+    sbin dev proc sys system data odm oem acct config storage mnt apex $(BOARD_ROOT_EXTRA_FOLDERS)); \
     ln -sf /system/bin $(TARGET_ROOT_OUT)/bin; \
     ln -sf /system/etc $(TARGET_ROOT_OUT)/etc; \
     ln -sf /data/user_de/0/com.android.shell/files/bugreports $(TARGET_ROOT_OUT)/bugreports; \
@@ -206,6 +206,7 @@ ifeq ($(_enforce_vndk_at_runtime),true)
 LOCAL_MODULE_STEM := $(call append_vndk_version,$(LOCAL_MODULE))
 include $(BUILD_SYSTEM)/base_rules.mk
 ld_config_template := $(LOCAL_PATH)/etc/ld.config.txt
+check_backward_compatibility := true
 vndk_version := $(PLATFORM_VNDK_VERSION)
 include $(LOCAL_PATH)/update_and_install_ld_config.mk
 
@@ -243,6 +244,7 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
 LOCAL_MODULE_STEM := $$(LOCAL_MODULE)
 include $(BUILD_SYSTEM)/base_rules.mk
 ld_config_template := $(LOCAL_PATH)/etc/ld.config.txt
+check_backward_compatibility := true
 vndk_version := $(1)
 lib_list_from_prebuilts := true
 include $(LOCAL_PATH)/update_and_install_ld_config.mk

@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2014 The Android Open Source Project
+ * Copyright 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef _LIBBACKTRACE_GET_PSS_H
-#define _LIBBACKTRACE_GET_PSS_H
+#pragma once
 
-size_t GetPssBytes();
+#include <stdint.h>
 
-#endif // _LIBBACKTRACE_GET_PSS_H
+static void* const kDebuggerdFallbackSivalPtrRequestDump = reinterpret_cast<void*>(~0UL);
+static const uintptr_t kDebuggerdFallbackSivalUintptrRequestDump = ~0UL;

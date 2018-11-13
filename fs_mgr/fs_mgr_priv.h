@@ -113,19 +113,25 @@
 #define MF_KEYDIRECTORY    0X4000000
 #define MF_SYSFS           0X8000000
 #define MF_LOGICAL        0x10000000
-// clang-format on
+#define MF_CHECKPOINT_BLK 0x20000000
+#define MF_CHECKPOINT_FS  0x40000000
+#define MF_WRAPPEDKEY     0X80000000
 
 #define DM_BUF_SIZE 4096
 
 using namespace std::chrono_literals;
 
-int fs_mgr_set_blk_ro(const char *blockdev);
+enum class FileWaitMode { Exists, DoesNotExist };
+
 bool fs_mgr_wait_for_file(const std::string& filename,
-                          const std::chrono::milliseconds relative_timeout);
-bool fs_mgr_update_for_slotselect(struct fstab *fstab);
+                          const std::chrono::milliseconds relative_timeout,
+                          FileWaitMode wait_mode = FileWaitMode::Exists);
+
+int fs_mgr_set_blk_ro(const char* blockdev);
+bool fs_mgr_update_for_slotselect(fstab* fstab);
 bool fs_mgr_is_device_unlocked();
 const std::string& get_android_dt_dir();
 bool is_dt_compatible();
-int load_verity_state(struct fstab_rec* fstab, int* mode);
+int load_verity_state(fstab_rec* fstab, int* mode);
 
 #endif /* __CORE_FS_MGR_PRIV_H */

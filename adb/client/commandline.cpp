@@ -130,7 +130,7 @@ static void help() {
         " pull [-a] REMOTE... LOCAL\n"
         "     copy files/dirs from device\n"
         "     -a: preserve file timestamp and mode\n"
-        " sync [all|data|odm|oem|product|system|vendor]\n"
+        " sync [all|data|odm|oem|product_services|product|system|vendor]\n"
         "     sync a local build from $ANDROID_PRODUCT_OUT to the device (default all)\n"
         "     -l: list but don't copy\n"
         "\n"
@@ -158,7 +158,7 @@ static void help() {
         "     --instant: cause the app to be installed as an ephemeral install app\n"
         "     --no-streaming: always push APK to device and invoke Package Manager as separate steps\n"
         "     --streaming: force streaming APK directly into Package Manager\n"
-        "     -f/--fastdeploy: use fast deploy (only valid with -r)\n"
+        "     --fastdeploy: use fast deploy (only valid with -r)\n"
         "     --no-fastdeploy: prevent use of fast deploy (only valid with -r)\n"
         "     --force-agent: force update of deployment agent when using fast deploy\n"
         "     --date-check-agent: update deployment agent when local version is newer and using fast deploy\n"
@@ -354,8 +354,7 @@ static void stdinout_raw_epilogue(int inFd, int outFd, int old_stdin_mode, int o
 }
 
 void copy_to_file(int inFd, int outFd) {
-    constexpr size_t BUFSIZE = 32 * 1024;
-    std::vector<char> buf(BUFSIZE);
+    std::vector<char> buf(32 * 1024);
     int len;
     long total = 0;
     int old_stdin_mode = -1;
@@ -367,9 +366,9 @@ void copy_to_file(int inFd, int outFd) {
 
     while (true) {
         if (inFd == STDIN_FILENO) {
-            len = unix_read(inFd, buf.data(), BUFSIZE);
+            len = unix_read(inFd, buf.data(), buf.size());
         } else {
-            len = adb_read(inFd, buf.data(), BUFSIZE);
+            len = adb_read(inFd, buf.data(), buf.size());
         }
         if (len == 0) {
             D("copy_to_file() : read 0 bytes; exiting");
@@ -842,14 +841,19 @@ static int adb_sideload_host(const char* filename) {
         return -1;
     }
 
-    std::string service = android::base::StringPrintf(
-        "sideload-host:%d:%d", static_cast<int>(sb.st_size), SIDELOAD_HOST_BLOCK_SIZE);
+    std::string service =
+            android::base::StringPrintf("sideload-host:%" PRId64 ":%d",
+                                        static_cast<int64_t>(sb.st_size), SIDELOAD_HOST_BLOCK_SIZE);
     std::string error;
     unique_fd device_fd(adb_connect(service, &error));
     if (device_fd < 0) {
-        // Try falling back to the older (<= K) sideload method. Maybe this
-        // is an older device that doesn't support sideload-host.
         fprintf(stderr, "adb: sideload connection failed: %s\n", error.c_str());
+
+        // If this is a small enough package, maybe this is an older device that doesn't
+        // support sideload-host. Try falling back to the older (<= K) sideload method.
+        if (sb.st_size > INT_MAX) {
+            return -1;
+        }
         fprintf(stderr, "adb: trying pre-KitKat sideload method...\n");
         return adb_sideload_legacy(filename, package_fd, static_cast<int>(sb.st_size));
     }
@@ -859,7 +863,7 @@ static int adb_sideload_host(const char* filename) {
 
     char buf[SIDELOAD_HOST_BLOCK_SIZE];
 
-    size_t xfer = 0;
+    int64_t xfer = 0;
     int last_percent = -1;
     while (true) {
         if (!ReadFdExactly(device_fd, buf, 8)) {
@@ -875,20 +879,22 @@ static int adb_sideload_host(const char* filename) {
             return 0;
         }
 
-        int block = strtol(buf, nullptr, 10);
-
-        size_t offset = block * SIDELOAD_HOST_BLOCK_SIZE;
-        if (offset >= static_cast<size_t>(sb.st_size)) {
-            fprintf(stderr, "adb: failed to read block %d past end\n", block);
+        int64_t block = strtoll(buf, nullptr, 10);
+        int64_t offset = block * SIDELOAD_HOST_BLOCK_SIZE;
+        if (offset >= static_cast<int64_t>(sb.st_size)) {
+            fprintf(stderr,
+                    "adb: failed to read block %" PRId64 " at offset %" PRId64 ", past end %" PRId64
+                    "\n",
+                    block, offset, static_cast<int64_t>(sb.st_size));
             return -1;
         }
 
         size_t to_write = SIDELOAD_HOST_BLOCK_SIZE;
-        if ((offset + SIDELOAD_HOST_BLOCK_SIZE) > static_cast<size_t>(sb.st_size)) {
+        if ((offset + SIDELOAD_HOST_BLOCK_SIZE) > static_cast<int64_t>(sb.st_size)) {
             to_write = sb.st_size - offset;
         }
 
-        if (adb_lseek(package_fd, offset, SEEK_SET) != static_cast<int>(offset)) {
+        if (adb_lseek(package_fd, offset, SEEK_SET) != offset) {
             fprintf(stderr, "adb: failed to seek to package block: %s\n", strerror(errno));
             return -1;
         }
@@ -1713,7 +1719,8 @@ int adb_commandline(int argc, const char** argv) {
         }
 
         if (src.empty()) src = "all";
-        std::vector<std::string> partitions{"data", "odm", "oem", "product", "system", "vendor"};
+        std::vector<std::string> partitions{"data",   "odm",   "oem", "product", "product_services",
+                                            "system", "vendor"};
         bool found = false;
         for (const auto& partition : partitions) {
             if (src == "all" || src == partition) {

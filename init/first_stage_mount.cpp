@@ -29,18 +29,21 @@
 #include <android-base/file.h>
 #include <android-base/logging.h>
 #include <android-base/strings.h>
+#include <fs_mgr.h>
+#include <fs_mgr_avb.h>
+#include <fs_mgr_dm_linear.h>
+#include <fs_mgr_overlayfs.h>
 #include <liblp/metadata_format.h>
 
 #include "devices.h"
-#include "fs_mgr.h"
-#include "fs_mgr_avb.h"
-#include "fs_mgr_dm_linear.h"
-#include "fs_mgr_overlayfs.h"
+#include "switch_root.h"
 #include "uevent.h"
 #include "uevent_listener.h"
 #include "util.h"
 
 using android::base::Timer;
+
+using namespace std::literals;
 
 namespace android {
 namespace init {
@@ -63,7 +66,9 @@ class FirstStageMount {
     bool InitRequiredDevices();
     bool InitMappedDevice(const std::string& verity_device);
     bool CreateLogicalPartitions();
+    bool MountPartition(fstab_rec* fstab_rec);
     bool MountPartitions();
+    bool IsDmLinearEnabled();
     bool GetBackingDmLinearDevices();
 
     virtual ListenerAction UeventCallback(const Uevent& uevent);
@@ -78,6 +83,7 @@ class FirstStageMount {
     std::string lp_metadata_partition_;
     std::vector<fstab_rec*> mount_fstab_recs_;
     std::set<std::string> required_devices_partition_names_;
+    std::string super_partition_name_;
     std::unique_ptr<DeviceHandler> device_handler_;
     UeventListener uevent_listener_;
 };
@@ -116,24 +122,18 @@ static inline bool IsDtVbmetaCompatible() {
     return is_android_dt_value_expected("vbmeta/compatible", "android,vbmeta");
 }
 
-static bool inline IsRecoveryMode() {
-    return access("/system/bin/recovery", F_OK) == 0;
+static bool ForceNormalBoot() {
+    static bool force_normal_boot = []() {
+        std::string cmdline;
+        android::base::ReadFileToString("/proc/cmdline", &cmdline);
+        return cmdline.find("androidboot.force_normal_boot=1") != std::string::npos;
+    }();
+
+    return force_normal_boot;
 }
 
-static inline bool IsDmLinearEnabled() {
-    static bool checked = false;
-    static bool enabled = false;
-    if (checked) {
-        return enabled;
-    }
-    import_kernel_cmdline(false,
-                          [](const std::string& key, const std::string& value, bool in_qemu) {
-                              if (key == "androidboot.logical_partitions" && value == "1") {
-                                  enabled = true;
-                              }
-                          });
-    checked = true;
-    return enabled;
+static bool IsRecoveryMode() {
+    return !ForceNormalBoot() && access("/system/bin/recovery", F_OK) == 0;
 }
 
 // Class Definitions
@@ -154,6 +154,8 @@ FirstStageMount::FirstStageMount()
     device_handler_ = std::make_unique<DeviceHandler>(
             std::vector<Permissions>{}, std::vector<SysfsPermissions>{}, std::vector<Subsystem>{},
             std::move(boot_devices), false);
+
+    super_partition_name_ = fs_mgr_get_super_partition_name();
 }
 
 std::unique_ptr<FirstStageMount> FirstStageMount::Create() {
@@ -184,13 +186,20 @@ bool FirstStageMount::InitDevices() {
     return GetBackingDmLinearDevices() && GetDmVerityDevices() && InitRequiredDevices();
 }
 
+bool FirstStageMount::IsDmLinearEnabled() {
+    for (auto fstab_rec : mount_fstab_recs_) {
+        if (fs_mgr_is_logical(fstab_rec)) return true;
+    }
+    return false;
+}
+
 bool FirstStageMount::GetBackingDmLinearDevices() {
     // Add any additional devices required for dm-linear mappings.
     if (!IsDmLinearEnabled()) {
         return true;
     }
 
-    required_devices_partition_names_.emplace(LP_METADATA_PARTITION_NAME);
+    required_devices_partition_names_.emplace(super_partition_name_);
     return true;
 }
 
@@ -256,7 +265,7 @@ bool FirstStageMount::CreateLogicalPartitions() {
 
     if (lp_metadata_partition_.empty()) {
         LOG(ERROR) << "Could not locate logical partition tables in partition "
-                   << LP_METADATA_PARTITION_NAME;
+                   << super_partition_name_;
         return false;
     }
     return android::fs_mgr::CreateLogicalPartitions(lp_metadata_partition_);
@@ -269,7 +278,7 @@ ListenerAction FirstStageMount::HandleBlockDevice(const std::string& name, const
     auto iter = required_devices_partition_names_.find(name);
     if (iter != required_devices_partition_names_.end()) {
         LOG(VERBOSE) << __PRETTY_FUNCTION__ << ": found partition: " << *iter;
-        if (IsDmLinearEnabled() && name == LP_METADATA_PARTITION_NAME) {
+        if (IsDmLinearEnabled() && name == super_partition_name_) {
             std::vector<std::string> links = device_handler_->GetBlockDeviceSymlinks(uevent);
             lp_metadata_partition_ = links[0];
         }
@@ -333,26 +342,63 @@ bool FirstStageMount::InitMappedDevice(const std::string& dm_device) {
     return true;
 }
 
-bool FirstStageMount::MountPartitions() {
-    for (auto fstab_rec : mount_fstab_recs_) {
-        if (fs_mgr_is_logical(fstab_rec)) {
-            if (!fs_mgr_update_logical_partition(fstab_rec)) {
-                return false;
-            }
-            if (!InitMappedDevice(fstab_rec->blk_device)) {
-                return false;
-            }
-        }
-        if (!SetUpDmVerity(fstab_rec)) {
-            PLOG(ERROR) << "Failed to setup verity for '" << fstab_rec->mount_point << "'";
+bool FirstStageMount::MountPartition(fstab_rec* fstab_rec) {
+    if (fs_mgr_is_logical(fstab_rec)) {
+        if (!fs_mgr_update_logical_partition(fstab_rec)) {
             return false;
         }
-        if (fs_mgr_do_mount_one(fstab_rec)) {
-            PLOG(ERROR) << "Failed to mount '" << fstab_rec->mount_point << "'";
+        if (!InitMappedDevice(fstab_rec->blk_device)) {
             return false;
         }
     }
-    fs_mgr_overlayfs_mount_all();
+    if (!SetUpDmVerity(fstab_rec)) {
+        PLOG(ERROR) << "Failed to setup verity for '" << fstab_rec->mount_point << "'";
+        return false;
+    }
+    if (fs_mgr_do_mount_one(fstab_rec)) {
+        PLOG(ERROR) << "Failed to mount '" << fstab_rec->mount_point << "'";
+        return false;
+    }
+    return true;
+}
+
+bool FirstStageMount::MountPartitions() {
+    // If system is in the fstab then we're not a system-as-root device, and in
+    // this case, we mount system first then pivot to it.  From that point on,
+    // we are effectively identical to a system-as-root device.
+    auto system_partition =
+            std::find_if(mount_fstab_recs_.begin(), mount_fstab_recs_.end(),
+                         [](const auto& rec) { return rec->mount_point == "/system"s; });
+
+    if (system_partition != mount_fstab_recs_.end()) {
+        if (ForceNormalBoot()) {
+            free((*system_partition)->mount_point);
+            (*system_partition)->mount_point = strdup("/system_recovery_mount");
+        }
+
+        if (!MountPartition(*system_partition)) {
+            return false;
+        }
+
+        SwitchRoot((*system_partition)->mount_point);
+
+        mount_fstab_recs_.erase(system_partition);
+    }
+
+    for (auto fstab_rec : mount_fstab_recs_) {
+        if (!MountPartition(fstab_rec) && !fs_mgr_is_nofail(fstab_rec)) {
+            return false;
+        }
+    }
+
+    // heads up for instantiating required device(s) for overlayfs logic
+    const auto devices = fs_mgr_overlayfs_required_devices(device_tree_fstab_.get());
+    for (auto const& device : devices) {
+        InitMappedDevice(device);
+    }
+
+    fs_mgr_overlayfs_mount_all(device_tree_fstab_.get());
+
     return true;
 }
 

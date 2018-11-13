@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef LIBMEMUNREACHABLE_ANON_VMA_NAMING_H_
-#define LIBMEMUNREACHABLE_ANON_VMA_NAMING_H_
+#pragma once
 
-#include <sys/prctl.h>
+#include <string>
 
-#define PR_SET_VMA 0x53564d41
-#define PR_SET_VMA_ANON_NAME 0
+namespace android {
+namespace init {
 
-#endif  // LIBMEMUNREACHABLE_ANON_VMA_NAMING_H_
+void SwitchRoot(const std::string& new_root);
+
+}  // namespace init
+}  // namespace android
