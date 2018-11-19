@@ -40,11 +40,6 @@ wait_for_logd_to_start() {
 
 case "$1" in
   start)
-        if [ ! -d /dev/socket ]; then
-            mkdir /dev/socket
-        fi
-        chmod 777 /dev/socket
-        echo 600 > /proc/sys/net/unix/max_dgram_qlen
         if [ -z $(pidof -o %PPID logd) ]; then
             echo "Starting logd ..."
             start-stop-daemon -S -b -a /sbin/logd
