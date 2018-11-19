@@ -79,6 +79,8 @@ struct uid_records {
 class uid_monitor {
 private:
     FRIEND_TEST(storaged_test, uid_monitor);
+    FRIEND_TEST(storaged_test, load_uid_io_proto);
+
     // last dump from /proc/uid_io/stats, uid -> uid_info
     unordered_map<uint32_t, uid_info> last_uid_io_stats_;
     // current io usage for next report, app name -> uid_io_usage
@@ -103,6 +105,10 @@ private:
     // writes io_history to protobuf
     void update_uid_io_proto(unordered_map<int, StoragedProto>* protos);
 
+    // Ensure that io_history_ can append |n| items without exceeding
+    // MAX_UID_RECORDS_SIZE in size.
+    void maybe_shrink_history_for_items(size_t nitems);
+
 public:
     uid_monitor();
     // called by storaged main thread
@@ -118,10 +124,12 @@ public:
     bool enabled() { return enabled_; };
     void report(unordered_map<int, StoragedProto>* protos);
     // restores io_history from protobuf
-    void load_uid_io_proto(const UidIOUsage& proto);
+    void load_uid_io_proto(userid_t user_id, const UidIOUsage& proto);
     void clear_user_history(userid_t user_id);
 
     map<uint64_t, uid_records>& io_history() { return io_history_; }
+
+    static constexpr int MAX_UID_RECORDS_SIZE = 1000 * 48; // 1000 uids in 48 hours
 };
 
 #endif /* _STORAGED_UID_MONITOR_H_ */

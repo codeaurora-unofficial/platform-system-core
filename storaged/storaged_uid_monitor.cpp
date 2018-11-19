@@ -21,6 +21,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <android/content/pm/IPackageManagerNative.h>
 #include <android-base/file.h>
@@ -200,8 +201,6 @@ std::unordered_map<uint32_t, uid_info> uid_monitor::get_uid_io_stats_locked()
 
 namespace {
 
-const int MAX_UID_RECORDS_SIZE = 1000 * 48; // 1000 uids in 48 hours
-
 inline size_t history_size(
     const std::map<uint64_t, struct uid_records>& history)
 {
@@ -245,15 +244,18 @@ void uid_monitor::add_records_locked(uint64_t curr_ts)
       return;
 
     // make some room for new records
-    ssize_t overflow = history_size(io_history_) +
-        new_records.entries.size() - MAX_UID_RECORDS_SIZE;
+    maybe_shrink_history_for_items(new_records.entries.size());
+
+    io_history_[curr_ts] = new_records;
+}
+
+void uid_monitor::maybe_shrink_history_for_items(size_t nitems) {
+    ssize_t overflow = history_size(io_history_) + nitems - MAX_UID_RECORDS_SIZE;
     while (overflow > 0 && io_history_.size() > 0) {
         auto del_it = io_history_.begin();
         overflow -= del_it->second.entries.size();
         io_history_.erase(io_history_.begin());
     }
-
-    io_history_[curr_ts] = new_records;
 }
 
 std::map<uint64_t, struct uid_records> uid_monitor::dump(
@@ -468,7 +470,7 @@ void uid_monitor::clear_user_history(userid_t user_id)
     }
 }
 
-void uid_monitor::load_uid_io_proto(const UidIOUsage& uid_io_proto)
+void uid_monitor::load_uid_io_proto(userid_t user_id, const UidIOUsage& uid_io_proto)
 {
     if (!enabled()) return;
 
@@ -478,8 +480,23 @@ void uid_monitor::load_uid_io_proto(const UidIOUsage& uid_io_proto)
         const UidIORecords& records_proto = item_proto.records();
         struct uid_records* recs = &io_history_[item_proto.end_ts()];
 
+        // It's possible that the same uid_io_proto file gets loaded more than
+        // once, for example, if system_server crashes. In this case we avoid
+        // adding duplicate entries, so we build a quick way to check for
+        // duplicates.
+        std::unordered_set<std::string> existing_uids;
+        for (const auto& rec : recs->entries) {
+            if (rec.ios.user_id == user_id) {
+                existing_uids.emplace(rec.name);
+            }
+        }
+
         recs->start_ts = records_proto.start_ts();
         for (const auto& rec_proto : records_proto.entries()) {
+            if (existing_uids.find(rec_proto.uid_name()) != existing_uids.end()) {
+                continue;
+            }
+
             struct uid_record record;
             record.name = rec_proto.uid_name();
             record.ios.user_id = rec_proto.user_id();
@@ -491,6 +508,12 @@ void uid_monitor::load_uid_io_proto(const UidIOUsage& uid_io_proto)
                     task_io_proto.ios());
             }
             recs->entries.push_back(record);
+        }
+
+        // We already added items, so this will just cull down to the maximum
+        // length. We do not remove anything if there is only one entry.
+        if (io_history_.size() > 1) {
+            maybe_shrink_history_for_items(0);
         }
     }
 }
