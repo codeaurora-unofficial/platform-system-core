@@ -379,6 +379,98 @@ case "$target" in
 esac
 
 case "$target" in
+    "QCS403" | "qcs403")
+        if [ -f /sys/devices/soc0/soc_id ]; then
+            soc_id=`cat /sys/devices/soc0/soc_id`
+        else
+            soc_id=`cat /sys/devices/system/soc/soc0/id`
+        fi
+
+        if [ -f /sys/devices/soc0/hw_platform ]; then
+            hw_platform=`cat /sys/devices/soc0/hw_platform`
+        else
+            hw_platform=`cat /sys/devices/system/soc/soc0/hw_platform`
+        fi
+
+        case "$soc_id" in
+           "373" )
+
+                #disable sched_boost in qcs403
+                if [ -f /proc/sys/kernel/sched_boost ]; then
+                    boost=`cat /proc/sys/kernel/sched_boost`
+                    if [ $boost != 0 ] ; then
+                        echo 0 > /proc/sys/kernel/sched_boost
+                    fi
+                fi
+
+                # core_ctl is not needed for qcs403. Disable it.
+                if [ -f /sys/devices/system/cpu/cpu0/core_ctl/disable ]; then
+                    echo 1 > /sys/devices/system/cpu/cpu0/core_ctl/disable
+                fi
+
+                for latfloor in /sys/devices/platform/soc/*cpu-ddr-latfloor*/devfreq/*cpu-ddr-latfloor*
+                do
+                    echo "compute" > $latfloor/governor
+                    echo 10 > $latfloor/polling_interval
+                done
+
+                for devfreq_gov in /sys/class/devfreq/soc:qcom,cpubw/governor
+                do
+                    node=`cat $devfreq_gov`
+                    if [ $node != "bw_hwmon" ] ; then
+                        echo "bw_hwmon" > $devfreq_gov
+                    fi
+                    for cpu_io_percent in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent
+                    do
+                        echo 20 > $cpu_io_percent
+                    done
+
+                for cpu_guard_band in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/guard_band_mbps
+                    do
+                        echo 30 > $cpu_guard_band
+                    done
+                done
+
+                # disable thermal core_control to update interactive gov settings
+                if [ -f /sys/module/msm_thermal/core_control/enabled ]; then
+                     echo 0 > /sys/module/msm_thermal/core_control/enabled
+                fi
+
+                echo 1 > /sys/devices/system/cpu/cpu0/online
+                echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+                echo 0 > /sys/devices/system/cpu/cpufreq/schedutil/rate_limit_us
+                #set the hispeed freq
+                echo 1094400 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_freq
+                echo 85 > /sys/devices/system/cpu/cpufreq/schedutil/hispeed_load
+                echo 1094400 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+
+                # enable console suspend
+                echo Y > /sys/module/printk/parameters/console_suspend
+
+                # sched_load_boost as -6 is equivalent to target load as 85.
+                echo -6 > /sys/devices/system/cpu/cpu0/sched_load_boost
+                echo -6 > /sys/devices/system/cpu/cpu1/sched_load_boost
+
+                # re-enable thermal core_control now
+                if [ -f /sys/module/msm_thermal/core_control/enabled ]; then
+                     echo 1 > /sys/module/msm_thermal/core_control/enabled
+                fi
+
+                # Bring up all cores online
+                echo 1 > /sys/devices/system/cpu/cpu1/online
+
+                # Enable low power modes
+                echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
+                echo mem > /sys/power/autosleep
+
+                ;;
+                *)
+                ;;
+        esac
+    ;;
+esac
+
+case "$target" in
     "msm8953" | "apq8053" )
 
         echo 128 > /sys/block/mmcblk0/bdi/read_ahead_kb
