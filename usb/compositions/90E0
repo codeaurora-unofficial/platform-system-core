@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2018, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -24,21 +24,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# DESCRIPTION: DIAG + ADB + UAC2
+# DESCRIPTION: DIAG + UAC2 + UVC
 
-echo "Switching to composition number 0x90CA" > /dev/kmsg
-
-if [ "$1" = "y" ]; then
-	num="1"
-else
-	num="0"
-fi
-
-if [ "$#" -ge 2 ]; then
-	delay=$2
-else
-	delay="0"
-fi
+echo "Switching to composition number 0x90E0"  > /dev/kmsg
 
 if [ "$#" -ge 3 ]; then
 	from_adb=$3
@@ -51,42 +39,21 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		/etc/launch_adbd start
-		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
 	rm os_desc/c* 2> /dev/null
 	rm configs/c*/f* 2> /dev/null
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
-	echo 0x90CA > idProduct
-	echo "DIAG_ADB_UAC2" > configs/c.1/strings/0x409/configuration
+	echo 0x90E0 > idProduct
+	echo "DIAG_UAC2_UVC" > configs/c.1/strings/0x409/configuration
 	ln -s functions/diag.diag configs/c.1/f1
-	ln -s functions/ffs.adb configs/c.1/f2
-	ln -s functions/uac2.0 configs/c.1/f3
+	ln -s functions/uac2.0 configs/c.1/f2
+	ln -s functions/uvc.0 configs/c.1/f3
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
-}
-
-run_8009() {
-	if [ $from_adb = "n" ]
-	then
-		pkill adbd
-	fi
-	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 90CA > /sys/class/android_usb/android$num/idProduct
-	echo 05C6 > /sys/class/android_usb/android$num/idVendor
-	echo diag > /sys/class/android_usb/android0/f_diag/clients
-	echo diag,adb,uac2_func > /sys/class/android_usb/android$num/functions
-	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
-	sleep $delay
-	echo 1 > /sys/class/android_usb/android$num/enable
-	if [ $from_adb = "n" ]
-	then
-		/etc/launch_adbd start
-	fi
 }
 
 case `source /sbin/usb/target` in
@@ -94,7 +61,7 @@ case `source /sbin/usb/target` in
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
-        * )
-		run_8009 &
+	* )
+		echo "This composition is not supported"
 		;;
 esac
