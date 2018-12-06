@@ -31,8 +31,6 @@ SourcePath=/etc/initscripts/logd
 Description=logd Service
 
 [Service]
-User=logd
-Group=logd
 Type=forking
 Restart=on-failure
 RemainAfterExit=yes
