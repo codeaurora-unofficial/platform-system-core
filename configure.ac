@@ -107,10 +107,16 @@ AC_ARG_ENABLE(debuggerd,
 AM_CONDITIONAL(NO_DEBUGGERD, [test "x${debuggerd}" = "xno"])
 
 AC_ARG_ENABLE(logd-privs,
-      AC_HELP_STRING([--enable-logd-privs], [Drop logd priviledges]),
+      AC_HELP_STRING([--enable-logd-privs], [Drop logd privileges]),
          [logd_privs="yes"], [logd_privs="no"])
 
 AM_CONDITIONAL(LOGDPRIVS, [test "x${logd_privs}" = "xyes"])
+
+AC_ARG_ENABLE(prop-trig,
+      AC_HELP_STRING([--enable-property-triggers], [Enable property trigger scripts]),
+         [prop_trig="yes"], [prop_trig="no"])
+
+AM_CONDITIONAL(PROPTRIGGER, [test "x${prop_trig}" = "xyes"])
 
 AC_ARG_WITH([system-size],
         [AS_HELP_STRING([--with-system-size=SYSTEM_SIZE],[Size of system partition.])],
