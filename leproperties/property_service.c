@@ -136,6 +136,7 @@ int main(int argc, char* argv[]) {
     exit(0);
 }
 
+#ifdef PROP_TRIGGER
 bool valid_trigger(const char* name)
 {
     FILE *fp = fopen(PROP_TRIGGER_CONF, "r");
@@ -170,7 +171,7 @@ void prop_trigger(char* name, char* val)
 {
     char *argv[] = { NULL, NULL, NULL, NULL };
 
-    argv[0] = PROP_TRIGGER;
+    argv[0] = PROP_TRIGGER_SCRIPT;
     argv[1] = name;
     argv[2] = val;
     argv[3] = NULL;
@@ -191,6 +192,7 @@ void prop_trigger(char* name, char* val)
     }
     return 0;
 }
+#endif
 
 property_db* process_setprop_msg(char* buff)
 {
@@ -225,9 +227,11 @@ property_db* process_setprop_msg(char* buff)
             LOG("Completed storing data to persist file");
         }
 
+#ifdef PROP_TRIGGER
         //start property trigger
         if (true == valid_trigger(node->unit.property_name))
             prop_trigger(node->unit.property_name, node->unit.property_value);
+#endif
 
         free(node);
     }
