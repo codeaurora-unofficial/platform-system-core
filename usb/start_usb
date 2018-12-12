@@ -213,6 +213,7 @@ case "$1" in
 		ln -s streaming/header/h streaming/class/fs/
 		ln -s streaming/header/h streaming/class/hs/
 		ln -s streaming/header/h streaming/class/ss/
+		cd /
 	fi
 
 	# enable debug message
