@@ -32,9 +32,6 @@ wait_for_data_mount() {
   done
 }
 
-# PLATFORM_SUBTYPE_ID for TTP CV2X platform
-SUBTYPE_ID_CV2X=1
-
 export KERNEL=`uname -r`
 export SOFTAP_W_DUN="N"
 
@@ -142,10 +139,6 @@ case "$1" in
 			echo 16384 > /sys/module/g_android/parameters/gsi_in_rndis_aggr_size
 			if [ -e /dev/mhi_ctrl ]; then
 				ln -fs /sbin/usb/compositions/901F /data/usb/boot_hsusb_composition
-			fi
-			if [ "$soc_hwplatform" == "TTP" ] && [ "$soc_subtypeid" == "$SUBTYPE_ID_CV2X" ]; then
-				wait_for_data_mount
-				ln -fs /sbin/usb/compositions/901D /data/usb/boot_hsusb_composition
 			fi
 			;;
 		*sdx20* )
