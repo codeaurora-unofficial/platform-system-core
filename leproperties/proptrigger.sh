@@ -34,6 +34,7 @@ case "$1" in
         echo 0 > /sys/devices/system/cpu/cpufreq/interactive/use_migration_notif
         echo 0 > /sys/devices/system/cpu/cpufreq/interactive/use_sched_load
         echo "85 1401600:95 2016000:99" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
+        echo Y > /sys/module/lpm_levels/parameters/sleep_disabled
         echo 40000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
 
         for cpu_io_percent in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent
@@ -50,6 +51,7 @@ case "$1" in
         echo 1 > /sys/devices/system/cpu/cpufreq/interactive/use_migration_notif
         echo 1 > /sys/devices/system/cpu/cpufreq/interactive/use_sched_load
         echo "85 1401600:90 1958400:95" > /sys/devices/system/cpu/cpufreq/interactive/target_loads
+        echo N > /sys/module/lpm_levels/parameters/sleep_disabled
         echo 20000 > /sys/devices/system/cpu/cpufreq/interactive/timer_rate
 
         for cpu_io_percent in /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/io_percent
@@ -65,7 +67,20 @@ case "$1" in
         ;;
     esac
     ;;
+
+"qmmf.power.hint.snapshot.on")
+    case "$2" in
+    "true" )
+        echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+        ;;
+    *)
+        echo interactive > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+        ;;
+    esac
+    ;;
 *)
     echo "no triggers for $1 val: $2"
     ;;
 esac
+
+exit 0
