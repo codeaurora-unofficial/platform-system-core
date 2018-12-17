@@ -53,10 +53,6 @@ else
 fi
 
 run_non_configfs() {
-	if [ $from_adb = "n" ]
-	then
-		pkill adbd
-	fi
 	echo 0 > /sys/class/android_usb/android$num/enable
 	echo 901D > /sys/class/android_usb/android$num/idProduct
 	echo 05C6 > /sys/class/android_usb/android$num/idVendor
@@ -65,20 +61,10 @@ run_non_configfs() {
 	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
 	sleep $delay
 	echo 1 > /sys/class/android_usb/android$num/enable
-	if [ $from_adb = "n" ]
-	then
-		/etc/launch_adbd start
-	fi
 }
 
 run_configfs() {
 	echo start > /data/usb_bind_in_progress
-	if [ $from_adb = "n" ]
-	then
-		pkill adbd
-		/etc/launch_adbd start
-		sleep 1
-	fi
 	cd /sys/kernel/config/usb_gadget/g1
 	rm os_desc/c* 2> /dev/null
 	rm configs/c*/f* 2> /dev/null
