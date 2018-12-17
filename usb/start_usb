@@ -155,12 +155,6 @@ case "$1" in
 		        ;;
 	esac
 
-	case `source /sbin/usb/target` in
-		*sm8150* )
-			echo peripheral > /sys/bus/platform/devices/a600000.ssusb/mode
-			;;
-	esac
-
 	#
 	# Initialize UVC conifguration.
 	#
