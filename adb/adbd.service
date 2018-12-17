@@ -26,12 +26,11 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 
 [Unit]
-SourcePath=/etc/launch_adbd
+SourcePath=/sbin/adbd
 Description=adbd Service
 After=usb.service
 
 [Service]
-KillMode=process
-Type=oneshot
-RemainAfterExit=yes
-ExecStart= /bin/sh -c '/etc/launch_adbd start'
+Type=simple
+Restart=always
+ExecStart=/sbin/adbd
