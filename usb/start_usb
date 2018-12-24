@@ -88,6 +88,8 @@ case "$1" in
 		mkdir functions/uac1.uac1
 		mkdir functions/uac2.0
 		mkdir functions/uvc.0
+		mkdir functions/rndis.rndis
+		mkdir functions/ipc.ipc
 		if [ ! -s "/etc/adb_devid" ]
 		then
 			echo $serialno > /etc/adb_devid
@@ -143,7 +145,7 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*sdxpoorwills* )
+		*sdxpoorwills* | *sdxprairie* )
 			if [ -e /dev/mhi_ctrl ]; then
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
@@ -213,6 +215,7 @@ case "$1" in
 		ln -s streaming/header/h streaming/class/fs/
 		ln -s streaming/header/h streaming/class/hs/
 		ln -s streaming/header/h streaming/class/ss/
+		cd /
 	fi
 
 	# enable debug message

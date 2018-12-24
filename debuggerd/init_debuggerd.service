@@ -32,12 +32,10 @@ Description=debuggerd Service
 DefaultDependencies=no
 
 [Service]
-Type=forking
-Restart=no
-TimeoutSec=5min
-IgnoreSIGPIPE=no
-KillMode=process
-GuessMainPID=no
+Type=oneshot
 RemainAfterExit=yes
-ExecStart=/etc/initscripts/init_debuggerd start
-ExecStop=/etc/initscripts/init_debuggerd stop
+ExecStart=/bin/sh -c '/etc/initscripts/init_debuggerd start'
+ExecStop=/bin/sh -c '/etc/initscripts/init_debuggerd stop'
+
+[Install]
+WantedBy=multi-user.target
