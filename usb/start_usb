@@ -98,6 +98,13 @@ case "$1" in
 		cat /etc/adb_devid > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
 		echo "$product_string" > strings/0x409/product
+
+		# correct SELinux labels on new /dev nodes
+		if [ -x /sbin/restorecon ]
+		then
+			/sbin/restorecon /dev/at_usb0 /dev/at_usb1
+		fi
+
 		setprop sys.usb.configfs 1
 		cd /
 	fi
@@ -153,12 +160,6 @@ case "$1" in
 		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *sm8150* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
-	esac
-
-	case `source /sbin/usb/target` in
-		*sm8150* )
-			echo peripheral > /sys/bus/platform/devices/a600000.ssusb/mode
-			;;
 	esac
 
 	#

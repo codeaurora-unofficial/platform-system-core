@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2014,2017-2018, The Linux Foundation. All rights reserved.
+# Copyright (c) 2018, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -24,9 +24,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# DESCRIPTION: DIAG + ADB
+# DESCRIPTION: DIAG + ADB + DUN + DPL
 
-echo "Switching to composition number 0x901D"  > /dev/kmsg
+echo "Switching to composition number 0x90F2"  > /dev/kmsg
 
 if [ "$1" = "y" ]; then
 	num="1"
@@ -46,34 +46,34 @@ else
 	from_adb="n"
 fi
 
-if [ -f /sys/class/android_usb/android$num/enable ]; then
-	configfs_supported="n"
-else
-	configfs_supported="y"
-fi
-
-run_non_configfs() {
-	echo 0 > /sys/class/android_usb/android$num/enable
-	echo 901D > /sys/class/android_usb/android$num/idProduct
-	echo 05C6 > /sys/class/android_usb/android$num/idVendor
-	echo diag > /sys/class/android_usb/android0/f_diag/clients
-	echo diag,adb > /sys/class/android_usb/android$num/functions
-	echo 1 > /sys/class/android_usb/android$num/remote_wakeup
-	sleep $delay
-	echo 1 > /sys/class/android_usb/android$num/enable
-}
-
 run_configfs() {
 	echo start > /data/usb_bind_in_progress
+	if [ $from_adb = "n" ]
+	then
+		pkill adbd
+		/etc/launch_adbd start
+		sleep 1
+	fi
 	cd /sys/kernel/config/usb_gadget/g1
-	rm os_desc/c* 2> /dev/null
 	rm configs/c*/f* 2> /dev/null
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
-	echo 0x901d > idProduct
-	echo "DIAG_ADB" > configs/c.1/strings/0x409/configuration
+	echo 0x90F2 > idProduct
+	echo "DIAG_ADB_DUN_DPL" > configs/c.1/strings/0x409/configuration
 	ln -s functions/diag.diag configs/c.1/f1
 	ln -s functions/ffs.adb configs/c.1/f2
+	if [ -f /etc/data/usb/softap_w_dun ]
+	then
+		SOFTAP_W_DUN=`cat /etc/data/usb/softap_w_dun`
+	fi
+	if [ "$SOFTAP_W_DUN" == "Y" ]
+	then
+		ln -s functions/gser.0 configs/c.1/f3
+	else
+		ln -s functions/cser.dun.0 configs/c.1/f3
+	fi
+	ln -s functions/gsi.dpl configs/c.1/f4
+	echo 0xA0 > configs/c.1/bmAttributes
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
@@ -81,12 +81,11 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	* )
-		if [ $configfs_supported = "y" ]; then
-			udcname=`ls -1 /sys/class/udc | head -n 1`
-			run_configfs $udcname &
-		else
-			run_non_configfs &
-		fi
+	*sdxpoorwills* )
+		udcname=`ls -1 /sys/class/udc | head -n 1`
+		run_configfs $udcname &
+		;;
+        * )
+		echo "This composition is currently not supported for this target "
 		;;
 esac
