@@ -28,10 +28,11 @@
 [Unit]
 SourcePath=/etc/launch_adbd
 Description=adbd Service
+Requires=usb.service
 After=usb.service
 
 [Service]
 KillMode=process
-Type=oneshot
+Restart=on-failure
 RemainAfterExit=yes
 ExecStart= /bin/sh -c '/etc/launch_adbd start'
