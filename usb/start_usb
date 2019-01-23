@@ -233,6 +233,12 @@ case "$1" in
 	if [ -d /sys/class/android_usb/android1 ]
 	then
 		pid=`cat /etc/usb/boot_hsic_comp`
+		# make 901D as default composition
+                if [ -z "$pid" ]
+		then
+                    pid = "901D"
+		fi
+
 		/sbin/usb/compositions/$pid y
 		# let hsic compostion script run before starting hsusb
 		sleep 1
@@ -242,6 +248,12 @@ case "$1" in
 	if [ -d /sys/class/android_usb/android0 ]
 	then
 		pid=`cat /etc/usb/boot_hsusb_comp`
+		# make 901D as default composition
+                if [ -z "$pid" ]
+		then
+                    pid = "901D"
+		fi
+
 		/sbin/usb/compositions/$pid n
 
 		if [ "$SOFTAP_W_DUN" == "Y" ]
