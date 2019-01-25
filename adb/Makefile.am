@@ -36,6 +36,7 @@ libadbd_la_CPPFLAGS += -std=c++14 -fpermissive
 libadbd_la_CPPFLAGS += -DUSE_GLIB -Dstrlcat=g_strlcat @GLIB_CFLAGS@
 libadbd_la_CPPFLAGS += -DADB_HOST=0
 libadbd_la_CPPFLAGS += -DADB_REVISION='"$(adb_version)"'
+libadbd_la_CPPFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 
 libadbd_la_LIBADD   := ../fs_mgr/libfs_mgr.la
 libadbd_la_LDFLAGS  := -lselinux -lcutils -lext4_utils -lmincrypt -lresolv -lbase
@@ -66,6 +67,7 @@ adbd_CPPFLAGS += -DADB_REVISION='"$(adb_version)"'
 adbd_CPPFLAGS += -DALLOW_ADBD_NO_AUTH=1
 adbd_CPPFLAGS += -DSYSTEM_SIZE=@SYSTEM_SIZE@
 adbd_CPPFLAGS += -DFEC_SIZE=@FEC_SIZE@
+adbd_CPPFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 
 if ADB_ROOT
 adbd_CPPFLAGS += -DALLOW_ADBD_ROOT=1
@@ -94,6 +96,7 @@ libadbd_la_CPPFLAGS += -Wall -Wno-unused-parameter
 libadbd_la_CPPFLAGS += -std=c++14 -fpermissive
 libadbd_la_CPPFLAGS += -DADB_HOST
 libadbd_la_CPPFLAGS += -DADB_REVISION='"$(adb_version)"'
+libadbd_la_CPPFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 libadbd_la_LDFLAGS   = -lbase
 
 # Build adb for linux
