@@ -32,7 +32,7 @@ export TERM=linux
 if [ -f /etc/default/adbd ]; then
         . /etc/default/adbd
 fi
-echo -n "Starting adbd... " > /dev/kmsg
+echo -n "Launch adb is starting adbd... " > /dev/kmsg
 start-stop-daemon -S -b -a /sbin/adbd
 
 # Check first if the /etc/adb_devid already has an id saved from earlier boot up.
