@@ -33,6 +33,6 @@ After=usb.service
 
 [Service]
 KillMode=process
-Restart=on-failure
-RemainAfterExit=yes
-ExecStart= /bin/sh -c '/etc/launch_adbd start'
+Restart=always
+ExecStart= /sbin/adbd
+ExecStartPost= /bin/sh -c '/etc/launch_adbd start'

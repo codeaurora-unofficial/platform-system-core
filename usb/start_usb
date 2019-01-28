@@ -257,7 +257,7 @@ case "$1" in
                     pid = "901D"
 		fi
 
-		/sbin/usb/compositions/$pid n
+		/sbin/usb/compositions/$pid n 0 y
 
 		if [ "$SOFTAP_W_DUN" == "Y" ]
 		then
