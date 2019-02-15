@@ -406,8 +406,8 @@ static void *usb_ffs_open_thread(void *x)
     struct usb_handle *usb = (struct usb_handle *)x;
     char value[PROPERTY_VALUE_MAX];
     DIR *udcdir;
-    struct dirent *file;
-    int fd;
+    struct dirent *file, **filelist;
+    int fd, n, i;
 
     while (true) {
         // wait until the USB device needs opening
@@ -430,11 +430,19 @@ static void *usb_ffs_open_thread(void *x)
 	// detect we are running after writing the composition rules from userspace.
 	if (access(USB_COMPOSITION_BIND_LOCK, F_OK ) == -1) {
 		if ((udcdir = opendir(UDC_DIR)) != NULL) {
-			while (file = readdir(udcdir)) {
-				// Skip over . and .. directories
-				// and find first non-dir entry
-				if (file->d_type != DT_DIR)
-					break;
+			n = scandir(UDC_DIR, &filelist, NULL, alphasort);
+			if (n == -1) {
+				D("[ usb_thread - scandir failed! ]\n");
+				file = NULL;
+			} else {
+				i = 0;
+				while (i < n) {
+					if (filelist[i]->d_type != DT_DIR) {
+						file = filelist[i];
+						break;
+					}
+					i++;
+				}
 			}
 			if (file) {
 				if ((fd = unix_open(UDC_FILE_PATH, O_RDWR)) != -1) {
