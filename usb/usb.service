@@ -34,6 +34,7 @@ RequiresMountsFor=/systemrw
 
 [Service]
 Type=oneshot
+Environment="adbd_params=0 y"
 RemainAfterExit=yes
 ExecStart= /bin/sh -c '/etc/initscripts/usb start'
 
