@@ -18,8 +18,8 @@
 // for SELinux operation for init.
 
 // When the system boots, there is no SEPolicy present and init is running in the kernel domain.
-// Init loads the SEPolicy from the file system, restores the context of /init based on this
-// SEPolicy, and finally exec()'s itself to run in the proper domain.
+// Init loads the SEPolicy from the file system, restores the context of /system/bin/init based on
+// this SEPolicy, and finally exec()'s itself to run in the proper domain.
 
 // The SEPolicy on Android comes in two variants: monolithic and split.
 
@@ -34,16 +34,18 @@
 // identical to the system image shipped on a vendor's device.
 
 // The split SEPolicy is loaded as described below:
-// 1) There is a precompiled SEPolicy located at /vendor/etc/selinux/precompiled_sepolicy.
-//    Stored along with this file is the sha256 hash of the parts of the SEPolicy on /system that
-//    were used to compile this precompiled policy.  The system partition contains a similar sha256
-//    of the parts of the SEPolicy that it currently contains.  If these two hashes match, then the
-//    system loads this precompiled_sepolicy directly.
-// 2) If these hashes do not match, then /system has been updated out of sync with /vendor and the
-//    init needs to compile the SEPolicy.  /system contains the SEPolicy compiler, secilc, and it
-//    is used by the LoadSplitPolicy() function below to compile the SEPolicy to a temp directory
-//    and load it.  That function contains even more documentation with the specific implementation
-//    details of how the SEPolicy is compiled if needed.
+// 1) There is a precompiled SEPolicy located at either /vendor/etc/selinux/precompiled_sepolicy or
+//    /odm/etc/selinux/precompiled_sepolicy if odm parition is present.  Stored along with this file
+//    are the sha256 hashes of the parts of the SEPolicy on /system and /product that were used to
+//    compile this precompiled policy.  The system partition contains a similar sha256 of the parts
+//    of the SEPolicy that it currently contains.  Symmetrically, product paritition contains a
+//    sha256 of its SEPolicy.  System loads this precompiled_sepolicy directly if and only if hashes
+//    for system policy match and hashes for product policy match.
+// 2) If these hashes do not match, then either /system or /product (or both) have been updated out
+//    of sync with /vendor and the init needs to compile the SEPolicy.  /system contains the
+//    SEPolicy compiler, secilc, and it is used by the LoadSplitPolicy() function below to compile
+//    the SEPolicy to a temp directory and load it.  That function contains even more documentation
+//    with the specific implementation details of how the SEPolicy is compiled if needed.
 
 #include "selinux.h"
 
@@ -58,8 +60,10 @@
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
 #include <android-base/unique_fd.h>
+#include <cutils/android_reboot.h>
 #include <selinux/android.h>
 
+#include "reboot_utils.h"
 #include "util.h"
 
 using android::base::ParseInt;
@@ -215,20 +219,35 @@ bool FindPrecompiledSplitPolicy(std::string* file) {
         return false;
     }
     std::string actual_plat_id;
-    if (!ReadFirstLine("/system/etc/selinux/plat_and_mapping_sepolicy.cil.sha256", &actual_plat_id)) {
+    if (!ReadFirstLine("/system/etc/selinux/plat_sepolicy_and_mapping.sha256", &actual_plat_id)) {
         PLOG(INFO) << "Failed to read "
-                      "/system/etc/selinux/plat_and_mapping_sepolicy.cil.sha256";
+                      "/system/etc/selinux/plat_sepolicy_and_mapping.sha256";
+        return false;
+    }
+    std::string actual_product_id;
+    if (!ReadFirstLine("/product/etc/selinux/product_sepolicy_and_mapping.sha256",
+                       &actual_product_id)) {
+        PLOG(INFO) << "Failed to read "
+                      "/product/etc/selinux/product_sepolicy_and_mapping.sha256";
         return false;
     }
 
     std::string precompiled_plat_id;
-    std::string precompiled_sha256 = *file + ".plat_and_mapping.sha256";
-    if (!ReadFirstLine(precompiled_sha256.c_str(), &precompiled_plat_id)) {
-        PLOG(INFO) << "Failed to read " << precompiled_sha256;
+    std::string precompiled_plat_sha256 = *file + ".plat_sepolicy_and_mapping.sha256";
+    if (!ReadFirstLine(precompiled_plat_sha256.c_str(), &precompiled_plat_id)) {
+        PLOG(INFO) << "Failed to read " << precompiled_plat_sha256;
         file->clear();
         return false;
     }
-    if ((actual_plat_id.empty()) || (actual_plat_id != precompiled_plat_id)) {
+    std::string precompiled_product_id;
+    std::string precompiled_product_sha256 = *file + ".product_sepolicy_and_mapping.sha256";
+    if (!ReadFirstLine(precompiled_product_sha256.c_str(), &precompiled_product_id)) {
+        PLOG(INFO) << "Failed to read " << precompiled_product_sha256;
+        file->clear();
+        return false;
+    }
+    if (actual_plat_id.empty() || actual_plat_id != precompiled_plat_id ||
+        actual_product_id.empty() || actual_product_id != precompiled_product_id) {
         file->clear();
         return false;
     }
@@ -302,7 +321,17 @@ bool LoadSplitPolicy() {
     if (!GetVendorMappingVersion(&vend_plat_vers)) {
         return false;
     }
-    std::string mapping_file("/system/etc/selinux/mapping/" + vend_plat_vers + ".cil");
+    std::string plat_mapping_file("/system/etc/selinux/mapping/" + vend_plat_vers + ".cil");
+
+    std::string product_policy_cil_file("/product/etc/selinux/product_sepolicy.cil");
+    if (access(product_policy_cil_file.c_str(), F_OK) == -1) {
+        product_policy_cil_file.clear();
+    }
+
+    std::string product_mapping_file("/product/etc/selinux/mapping/" + vend_plat_vers + ".cil");
+    if (access(product_mapping_file.c_str(), F_OK) == -1) {
+        product_mapping_file.clear();
+    }
 
     // vendor_sepolicy.cil and plat_pub_versioned.cil are the new design to replace
     // nonplat_sepolicy.cil.
@@ -333,13 +362,19 @@ bool LoadSplitPolicy() {
         "-m", "-M", "true", "-G", "-N",
         // Target the highest policy language version supported by the kernel
         "-c", version_as_string.c_str(),
-        mapping_file.c_str(),
+        plat_mapping_file.c_str(),
         "-o", compiled_sepolicy,
         // We don't care about file_contexts output by the compiler
         "-f", "/sys/fs/selinux/null",  // /dev/null is not yet available
     };
     // clang-format on
 
+    if (!product_policy_cil_file.empty()) {
+        compile_args.push_back(product_policy_cil_file.c_str());
+    }
+    if (!product_mapping_file.empty()) {
+        compile_args.push_back(product_mapping_file.c_str());
+    }
     if (!plat_pub_versioned_cil_file.empty()) {
         compile_args.push_back(plat_pub_versioned_cil_file.c_str());
     }
@@ -379,8 +414,6 @@ bool LoadPolicy() {
     return IsSplitPolicyDevice() ? LoadSplitPolicy() : LoadMonolithicPolicy();
 }
 
-}  // namespace
-
 void SelinuxInitialize() {
     Timer t;
 
@@ -405,6 +438,8 @@ void SelinuxInitialize() {
     setenv("INIT_SELINUX_TOOK", std::to_string(t.duration().count()).c_str(), 1);
 }
 
+}  // namespace
+
 // The files and directories that were created before initial sepolicy load or
 // files on ramdisk need to have their security context restored to the proper
 // value. This must happen before /dev is populated by ueventd.
@@ -422,32 +457,8 @@ void SelinuxRestoreContext() {
     selinux_android_restorecon("/dev/urandom", 0);
     selinux_android_restorecon("/dev/__properties__", 0);
 
-    selinux_android_restorecon("/plat_file_contexts", 0);
-    selinux_android_restorecon("/nonplat_file_contexts", 0);
-    selinux_android_restorecon("/vendor_file_contexts", 0);
-    selinux_android_restorecon("/plat_property_contexts", 0);
-    selinux_android_restorecon("/nonplat_property_contexts", 0);
-    selinux_android_restorecon("/vendor_property_contexts", 0);
-    selinux_android_restorecon("/plat_seapp_contexts", 0);
-    selinux_android_restorecon("/nonplat_seapp_contexts", 0);
-    selinux_android_restorecon("/vendor_seapp_contexts", 0);
-    selinux_android_restorecon("/plat_service_contexts", 0);
-    selinux_android_restorecon("/nonplat_service_contexts", 0);
-    selinux_android_restorecon("/vendor_service_contexts", 0);
-    selinux_android_restorecon("/plat_hwservice_contexts", 0);
-    selinux_android_restorecon("/nonplat_hwservice_contexts", 0);
-    selinux_android_restorecon("/vendor_hwservice_contexts", 0);
-    selinux_android_restorecon("/sepolicy", 0);
-    selinux_android_restorecon("/vndservice_contexts", 0);
-
     selinux_android_restorecon("/dev/block", SELINUX_ANDROID_RESTORECON_RECURSE);
     selinux_android_restorecon("/dev/device-mapper", 0);
-
-    selinux_android_restorecon("/sbin/mke2fs_static", 0);
-    selinux_android_restorecon("/sbin/e2fsdroid_static", 0);
-
-    selinux_android_restorecon("/sbin/mkfs.f2fs", 0);
-    selinux_android_restorecon("/sbin/sload.f2fs", 0);
 }
 
 int SelinuxKlogCallback(int type, const char* fmt, ...) {
@@ -494,6 +505,39 @@ int SelinuxGetVendorAndroidVersion() {
     }
 
     return major_version;
+}
+
+// This function initializes SELinux then execs init to run in the init SELinux context.
+int SetupSelinux(char** argv) {
+    android::base::InitLogging(argv, &android::base::KernelLogger, [](const char*) {
+        RebootSystem(ANDROID_RB_RESTART2, "bootloader");
+    });
+
+    if (REBOOT_BOOTLOADER_ON_PANIC) {
+        InstallRebootSignalHandlers();
+    }
+
+    // Set up SELinux, loading the SELinux policy.
+    SelinuxSetupKernelLogging();
+    SelinuxInitialize();
+
+    // We're in the kernel domain and want to transition to the init domain.  File systems that
+    // store SELabels in their xattrs, such as ext4 do not need an explicit restorecon here,
+    // but other file systems do.  In particular, this is needed for ramdisks such as the
+    // recovery image for A/B devices.
+    if (selinux_android_restorecon("/system/bin/init", 0) == -1) {
+        PLOG(FATAL) << "restorecon failed of /system/bin/init failed";
+    }
+
+    const char* path = "/system/bin/init";
+    const char* args[] = {path, "second_stage", nullptr};
+    execv(path, const_cast<char**>(args));
+
+    // execv() only returns if an error happened, in which case we
+    // panic and never return from this function.
+    PLOG(FATAL) << "execv(\"" << path << "\") failed";
+
+    return 1;
 }
 
 // selinux_android_file_context_handle() takes on the order of 10+ms to run, so we want to cache

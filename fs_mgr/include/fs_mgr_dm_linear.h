@@ -43,7 +43,7 @@ std::unique_ptr<LpMetadata> ReadCurrentMetadata(const std::string& block_device)
 
 // Create block devices for all logical partitions in the given metadata. The
 // metadata must have been read from the current slot.
-bool CreateLogicalPartitions(const LpMetadata& metadata);
+bool CreateLogicalPartitions(const LpMetadata& metadata, const std::string& block_device);
 
 // Create block devices for all logical partitions. This is a convenience
 // method for ReadMetadata and CreateLogicalPartitions.
@@ -57,6 +57,12 @@ bool CreateLogicalPartitions(const std::string& block_device);
 // If |timeout_ms| is non-zero, then CreateLogicalPartition will block for the
 // given amount of time until the path returned in |path| is available.
 bool CreateLogicalPartition(const std::string& block_device, uint32_t metadata_slot,
+                            const std::string& partition_name, bool force_writable,
+                            const std::chrono::milliseconds& timeout_ms, std::string* path);
+
+// Same as above, but with a given metadata object. Care should be taken that
+// the metadata represents a valid partition layout.
+bool CreateLogicalPartition(const std::string& block_device, const LpMetadata& metadata,
                             const std::string& partition_name, bool force_writable,
                             const std::chrono::milliseconds& timeout_ms, std::string* path);
 

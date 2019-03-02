@@ -23,6 +23,7 @@
 #include <memory>
 #include <string>
 
+#include "adb_unique_fd.h"
 #include "fdevent.h"
 #include "types.h"
 
@@ -102,18 +103,19 @@ void install_local_socket(asocket *s);
 void remove_socket(asocket *s);
 void close_all_sockets(atransport *t);
 
-asocket *create_local_socket(int fd);
-asocket* create_local_service_socket(const char* destination, atransport* transport);
+asocket* create_local_socket(unique_fd fd);
+asocket* create_local_service_socket(std::string_view destination, atransport* transport);
 
 asocket *create_remote_socket(unsigned id, atransport *t);
-void connect_to_remote(asocket *s, const char *destination);
+void connect_to_remote(asocket* s, std::string_view destination);
 void connect_to_smartsocket(asocket *s);
 
 // Internal functions that are only made available here for testing purposes.
 namespace internal {
 
 #if ADB_HOST
-char* skip_host_serial(char* service);
+bool parse_host_service(std::string_view* out_serial, std::string_view* out_command,
+                        std::string_view service);
 #endif
 
 }  // namespace internal

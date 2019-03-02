@@ -21,8 +21,9 @@
 #include <string>
 
 #include <android-base/logging.h>
+#include <fs_mgr.h>
+#include <fstab/fstab.h>
 
-#include "fs_mgr.h"
 #include "fs_mgr_priv_boot_config.h"
 
 /* The CHECK() in logging.h will use program invocation name as the tag.
@@ -117,7 +118,20 @@
 #define MF_LOGICAL        0x10000000
 #define MF_CHECKPOINT_BLK 0x20000000
 #define MF_CHECKPOINT_FS  0x40000000
-#define MF_WRAPPEDKEY     0X80000000
+#define MF_FIRST_STAGE_MOUNT \
+                          0x80000000
+#define MF_SLOTSELECT_OTHER  \
+                         0x100000000
+#define MF_ZRAM_LOOPBACK_PATH    \
+                         0x200000000
+#define MF_ZRAM_LOOPBACK_SIZE    \
+                         0x400000000
+#define MF_ZRAM_BACKING_DEV_PATH \
+                         0x800000000
+#define MF_FS_VERITY  \
+                        0x1000000000
+
+// clang-format on
 
 #define DM_BUF_SIZE 4096
 
@@ -129,11 +143,11 @@ bool fs_mgr_wait_for_file(const std::string& filename,
                           const std::chrono::milliseconds relative_timeout,
                           FileWaitMode wait_mode = FileWaitMode::Exists);
 
-int fs_mgr_set_blk_ro(const char* blockdev);
-bool fs_mgr_update_for_slotselect(fstab* fstab);
+bool fs_mgr_set_blk_ro(const std::string& blockdev, bool readonly = true);
+bool fs_mgr_update_for_slotselect(android::fs_mgr::Fstab* fstab);
 bool fs_mgr_is_device_unlocked();
 const std::string& get_android_dt_dir();
 bool is_dt_compatible();
-int load_verity_state(fstab_rec* fstab, int* mode);
+int load_verity_state(const android::fs_mgr::FstabEntry& entry, int* mode);
 
 #endif /* __CORE_FS_MGR_PRIV_H */

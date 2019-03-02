@@ -237,30 +237,7 @@ static void jdwp_process_event(int socket, unsigned events, void* _proc) {
         CHECK(!proc->out_fds.empty());
 
         int fd = proc->out_fds.back().get();
-        struct cmsghdr* cmsg;
-        struct msghdr msg;
-        struct iovec iov;
-        char dummy = '!';
-        char buffer[sizeof(struct cmsghdr) + sizeof(int)];
-
-        iov.iov_base = &dummy;
-        iov.iov_len = 1;
-        msg.msg_name = nullptr;
-        msg.msg_namelen = 0;
-        msg.msg_iov = &iov;
-        msg.msg_iovlen = 1;
-        msg.msg_flags = 0;
-        msg.msg_control = buffer;
-        msg.msg_controllen = sizeof(buffer);
-
-        cmsg = CMSG_FIRSTHDR(&msg);
-        cmsg->cmsg_len = msg.msg_controllen;
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-        ((int*)CMSG_DATA(cmsg))[0] = fd;
-
-        int ret = TEMP_FAILURE_RETRY(sendmsg(socket, &msg, 0));
-        if (ret < 0) {
+        if (!SendFileDescriptor(socket, fd)) {
             D("sending new file descriptor to JDWP %d failed: %s", proc->pid, strerror(errno));
             goto CloseProcess;
         }
@@ -326,7 +303,6 @@ static void jdwp_control_event(int s, unsigned events, void* user);
 static int jdwp_control_init(JdwpControl* control, const char* sockname, int socknamelen) {
     sockaddr_un addr;
     socklen_t addrlen;
-    int s;
     int maxpath = sizeof(addr.sun_path);
     int pathlen = socknamelen;
 
@@ -339,7 +315,7 @@ static int jdwp_control_init(JdwpControl* control, const char* sockname, int soc
     addr.sun_family = AF_UNIX;
     memcpy(addr.sun_path, sockname, socknamelen);
 
-    s = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+    unique_fd s(socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0));
     if (s < 0) {
         D("could not create vm debug control socket. %d: %s", errno, strerror(errno));
         return -1;
@@ -349,22 +325,18 @@ static int jdwp_control_init(JdwpControl* control, const char* sockname, int soc
 
     if (bind(s, reinterpret_cast<sockaddr*>(&addr), addrlen) < 0) {
         D("could not bind vm debug control socket: %d: %s", errno, strerror(errno));
-        adb_close(s);
         return -1;
     }
 
     if (listen(s, 4) < 0) {
         D("listen failed in jdwp control socket: %d: %s", errno, strerror(errno));
-        adb_close(s);
         return -1;
     }
 
-    control->listen_socket = s;
-
-    control->fde = fdevent_create(s, jdwp_control_event, control);
+    control->listen_socket = s.release();
+    control->fde = fdevent_create(control->listen_socket, jdwp_control_event, control);
     if (control->fde == nullptr) {
         D("could not create fdevent for jdwp control socket");
-        adb_close(s);
         return -1;
     }
 

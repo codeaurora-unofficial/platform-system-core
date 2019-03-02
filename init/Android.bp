@@ -60,7 +60,6 @@ cc_defaults {
     },
     static_libs: [
         "libseccomp_policy",
-        "libprocessgroup",
         "libavb",
         "libprotobuf-cpp-lite",
         "libpropertyinfoserializer",
@@ -71,17 +70,22 @@ cc_defaults {
         "libbinder",
         "libbootloader_message",
         "libcutils",
+        "libcrypto",
         "libdl",
         "libext4_utils",
         "libfs_mgr",
         "libfscrypt",
+        "libgsi",
         "libhidl-gen-utils",
         "libkeyutils",
         "liblog",
         "liblogwrap",
+        "liblp",
+        "libprocessgroup",
         "libselinux",
         "libutils",
     ],
+    bootstrap: true,
 }
 
 cc_library_static {
@@ -92,6 +96,7 @@ cc_library_static {
         "action.cpp",
         "action_manager.cpp",
         "action_parser.cpp",
+        "boringssl_self_test.cpp",
         "bootchart.cpp",
         "builtins.cpp",
         "capabilities.cpp",
@@ -99,11 +104,13 @@ cc_library_static {
         "devices.cpp",
         "epoll.cpp",
         "firmware_handler.cpp",
+        "first_stage_init.cpp",
         "first_stage_mount.cpp",
         "import_parser.cpp",
         "init.cpp",
         "keychords.cpp",
         "modalias_handler.cpp",
+        "mount_namespace.cpp",
         "parser.cpp",
         "persistent_properties.cpp",
         "persistent_properties.proto",
@@ -117,6 +124,7 @@ cc_library_static {
         "sigchld_handler.cpp",
         "subcontext.cpp",
         "subcontext.proto",
+        "switch_root.cpp",
         "rlimit_parser.cpp",
         "tokenizer.cpp",
         "uevent_listener.cpp",
@@ -159,6 +167,7 @@ cc_binary {
             exclude_shared_libs: ["libbinder", "libutils"],
         },
     },
+    ldflags: ["-Wl,--rpath,/system/${LIB}/bootstrap"],
 }
 
 // Tests

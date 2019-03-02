@@ -26,10 +26,13 @@
 
 #include <android-base/stringprintf.h>
 
+#include <demangle.h>
+
 #include <unwindstack/Elf.h>
 #include <unwindstack/JitDebug.h>
 #include <unwindstack/MapInfo.h>
 #include <unwindstack/Maps.h>
+#include <unwindstack/Memory.h>
 #include <unwindstack/Unwinder.h>
 
 #if !defined(NO_LIBDEXFILE_SUPPORT)
@@ -59,7 +62,8 @@ void Unwinder::FillInDexFrame() {
   if (info != nullptr) {
     frame->map_start = info->start;
     frame->map_end = info->end;
-    frame->map_offset = info->offset;
+    frame->map_elf_start_offset = info->elf_start_offset;
+    frame->map_exact_offset = info->offset;
     frame->map_load_bias = info->load_bias;
     frame->map_flags = info->flags;
     if (resolve_names_) {
@@ -102,7 +106,8 @@ void Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_
   if (resolve_names_) {
     frame->map_name = map_info->name;
   }
-  frame->map_offset = map_info->offset;
+  frame->map_elf_start_offset = map_info->elf_start_offset;
+  frame->map_exact_offset = map_info->offset;
   frame->map_start = map_info->start;
   frame->map_end = map_info->end;
   frame->map_flags = map_info->flags;
@@ -139,7 +144,6 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
 
   bool return_address_attempt = false;
   bool adjust_pc = false;
-  std::unique_ptr<JitDebug> jit_debug;
   for (; frames_.size() < max_frames_;) {
     uint64_t cur_pc = regs_->pc();
     uint64_t cur_sp = regs_->sp();
@@ -239,8 +243,14 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
 
     if (!stepped) {
       if (return_address_attempt) {
-        // Remove the speculative frame.
-        frames_.pop_back();
+        // Only remove the speculative frame if there are more than two frames
+        // or the pc in the first frame is in a valid map.
+        // This allows for a case where the code jumps into the middle of
+        // nowhere, but there is no other unwind information after that.
+        if (frames_.size() > 2 || (frames_.size() > 0 && maps_->Find(frames_[0].pc) != nullptr)) {
+          // Remove the speculative frame.
+          frames_.pop_back();
+        }
         break;
       } else if (in_device_map) {
         // Do not attempt any other unwinding, pc or sp is in a device
@@ -284,10 +294,6 @@ std::string Unwinder::FormatFrame(const FrameData& frame, bool is32bit) {
     data += android::base::StringPrintf("  #%02zu pc %016" PRIx64, frame.num, frame.rel_pc);
   }
 
-  if (frame.map_offset != 0) {
-    data += android::base::StringPrintf(" (offset 0x%" PRIx64 ")", frame.map_offset);
-  }
-
   if (frame.map_start == frame.map_end) {
     // No valid map associated with this frame.
     data += "  <unknown>";
@@ -296,8 +302,13 @@ std::string Unwinder::FormatFrame(const FrameData& frame, bool is32bit) {
   } else {
     data += android::base::StringPrintf("  <anonymous:%" PRIx64 ">", frame.map_start);
   }
+
+  if (frame.map_elf_start_offset != 0) {
+    data += android::base::StringPrintf(" (offset 0x%" PRIx64 ")", frame.map_elf_start_offset);
+  }
+
   if (!frame.function_name.empty()) {
-    data += " (" + frame.function_name;
+    data += " (" + demangle(frame.function_name.c_str());
     if (frame.function_offset != 0) {
       data += android::base::StringPrintf("+%" PRId64, frame.function_offset);
     }
@@ -317,5 +328,30 @@ void Unwinder::SetDexFiles(DexFiles* dex_files, ArchEnum arch) {
   dex_files_ = dex_files;
 }
 #endif
+
+bool UnwinderFromPid::Init(ArchEnum arch) {
+  if (pid_ == getpid()) {
+    maps_ptr_.reset(new LocalMaps());
+  } else {
+    maps_ptr_.reset(new RemoteMaps(pid_));
+  }
+  if (!maps_ptr_->Parse()) {
+    return false;
+  }
+  maps_ = maps_ptr_.get();
+
+  process_memory_ = Memory::CreateProcessMemoryCached(pid_);
+
+  jit_debug_ptr_.reset(new JitDebug(process_memory_));
+  jit_debug_ = jit_debug_ptr_.get();
+  SetJitDebug(jit_debug_, arch);
+#if !defined(NO_LIBDEXFILE_SUPPORT)
+  dex_files_ptr_.reset(new DexFiles(process_memory_));
+  dex_files_ = dex_files_ptr_.get();
+  SetDexFiles(dex_files_, arch);
+#endif
+
+  return true;
+}
 
 }  // namespace unwindstack

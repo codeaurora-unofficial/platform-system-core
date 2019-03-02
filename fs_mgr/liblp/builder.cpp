@@ -20,6 +20,7 @@
 
 #include <algorithm>
 
+#include <android-base/properties.h>
 #include <android-base/unique_fd.h>
 
 #include "liblp/liblp.h"
@@ -28,6 +29,11 @@
 
 namespace android {
 namespace fs_mgr {
+
+bool MetadataBuilder::sABOverrideSet;
+bool MetadataBuilder::sABOverrideValue;
+
+static const std::string kDefaultGroup = "default";
 
 bool LinearExtent::AddTo(LpMetadata* out) const {
     if (device_index_ >= out->block_devices.size()) {
@@ -158,43 +164,57 @@ std::unique_ptr<MetadataBuilder> MetadataBuilder::NewForUpdate(const IPartitionO
         return nullptr;
     }
 
-    // Get the list of devices we already have.
-    std::set<std::string> block_devices;
-    for (const auto& block_device : metadata->block_devices) {
-        block_devices.emplace(GetBlockDevicePartitionName(block_device));
+    // On non-retrofit devices there is only one location for metadata: the
+    // super partition. update_engine will remove and resize partitions as
+    // needed. On the other hand, for retrofit devices, we'll need to
+    // translate block device and group names to update their slot suffixes.
+    auto super_device = GetMetadataSuperBlockDevice(*metadata.get());
+    if (GetBlockDevicePartitionName(*super_device) == "super") {
+        return New(*metadata.get(), &opener);
     }
 
-    auto new_block_devices = metadata->block_devices;
+    // Clear partitions and extents, since they have no meaning on the target
+    // slot. We also clear groups since they are re-added during OTA.
+    metadata->partitions.clear();
+    metadata->extents.clear();
+    metadata->groups.clear();
 
-    // Add missing block devices.
     std::string source_slot_suffix = SlotSuffixForSlotNumber(source_slot_number);
     std::string target_slot_suffix = SlotSuffixForSlotNumber(target_slot_number);
-    for (const auto& block_device : metadata->block_devices) {
-        std::string partition_name = GetBlockDevicePartitionName(block_device);
+
+    // Translate block devices.
+    auto source_block_devices = std::move(metadata->block_devices);
+    for (const auto& source_block_device : source_block_devices) {
+        std::string partition_name = GetBlockDevicePartitionName(source_block_device);
         std::string slot_suffix = GetPartitionSlotSuffix(partition_name);
         if (slot_suffix.empty() || slot_suffix != source_slot_suffix) {
-            continue;
+            // This should never happen. It means that the source metadata
+            // refers to a target or unknown block device.
+            LERROR << "Invalid block device for slot " << source_slot_suffix << ": "
+                   << partition_name;
+            return nullptr;
         }
         std::string new_name =
                 partition_name.substr(0, partition_name.size() - slot_suffix.size()) +
                 target_slot_suffix;
-        if (block_devices.find(new_name) != block_devices.end()) {
-            continue;
-        }
 
-        auto new_device = block_device;
+        auto new_device = source_block_device;
         if (!UpdateBlockDevicePartitionName(&new_device, new_name)) {
             LERROR << "Partition name too long: " << new_name;
             return nullptr;
         }
-        new_block_devices.emplace_back(new_device);
+        metadata->block_devices.emplace_back(new_device);
     }
 
-    metadata->block_devices = new_block_devices;
     return New(*metadata.get(), &opener);
 }
 
-MetadataBuilder::MetadataBuilder() : auto_slot_suffixing_(false) {
+void MetadataBuilder::OverrideABForTesting(bool ab_device) {
+    sABOverrideSet = true;
+    sABOverrideValue = ab_device;
+}
+
+MetadataBuilder::MetadataBuilder() : auto_slot_suffixing_(false), ignore_slot_suffixing_(false) {
     memset(&geometry_, 0, sizeof(geometry_));
     geometry_.magic = LP_METADATA_GEOMETRY_MAGIC;
     geometry_.struct_size = sizeof(geometry_);
@@ -249,6 +269,11 @@ void MetadataBuilder::ImportExtents(Partition* dest, const LpMetadata& metadata,
 }
 
 static bool VerifyDeviceProperties(const BlockDeviceInfo& device_info) {
+    if (device_info.logical_block_size == 0) {
+        LERROR << "Block device " << device_info.partition_name
+               << " logical block size must not be zero.";
+        return false;
+    }
     if (device_info.logical_block_size % LP_SECTOR_SIZE != 0) {
         LERROR << "Block device " << device_info.partition_name
                << " logical block size must be a multiple of 512.";
@@ -315,7 +340,7 @@ bool MetadataBuilder::Init(const std::vector<BlockDeviceInfo>& block_devices,
         out.alignment = device_info.alignment;
         out.alignment_offset = device_info.alignment_offset;
         out.size = device_info.size;
-        if (device_info.partition_name.size() >= sizeof(out.partition_name)) {
+        if (device_info.partition_name.size() > sizeof(out.partition_name)) {
             LERROR << "Partition name " << device_info.partition_name << " exceeds maximum length.";
             return false;
         }
@@ -385,7 +410,7 @@ bool MetadataBuilder::Init(const std::vector<BlockDeviceInfo>& block_devices,
     geometry_.metadata_slot_count = metadata_slot_count;
     geometry_.logical_block_size = logical_block_size;
 
-    if (!AddGroup("default", 0)) {
+    if (!AddGroup(kDefaultGroup, 0)) {
         return false;
     }
     return true;
@@ -401,7 +426,7 @@ bool MetadataBuilder::AddGroup(const std::string& group_name, uint64_t maximum_s
 }
 
 Partition* MetadataBuilder::AddPartition(const std::string& name, uint32_t attributes) {
-    return AddPartition(name, "default", attributes);
+    return AddPartition(name, kDefaultGroup, attributes);
 }
 
 Partition* MetadataBuilder::AddPartition(const std::string& name, const std::string& group_name,
@@ -416,6 +441,11 @@ Partition* MetadataBuilder::AddPartition(const std::string& name, const std::str
     }
     if (!FindGroup(group_name)) {
         LERROR << "Could not find partition group: " << group_name;
+        return nullptr;
+    }
+    if (IsABDevice() && !auto_slot_suffixing_ && name != "scratch" && !ignore_slot_suffixing_ &&
+        GetPartitionSlotSuffix(name).empty()) {
+        LERROR << "Unsuffixed partition not allowed on A/B device: " << name;
         return nullptr;
     }
     partitions_.push_back(std::make_unique<Partition>(name, group_name, attributes));
@@ -555,6 +585,12 @@ bool MetadataBuilder::GrowPartition(Partition* partition, uint64_t aligned_size)
     CHECK_NE(sectors_per_block, 0);
     CHECK(sectors_needed % sectors_per_block == 0);
 
+    if (IsABDevice() && !IsRetrofitDevice() && GetPartitionSlotSuffix(partition->name()) == "_b") {
+        // Allocate "a" partitions top-down and "b" partitions bottom-up, to
+        // minimize fragmentation during OTA.
+        free_regions = PrioritizeSecondHalfOfSuper(free_regions);
+    }
+
     // Find gaps that we can use for new extents. Note we store new extents in a
     // temporary vector, and only commit them if we are guaranteed enough free
     // space.
@@ -577,14 +613,23 @@ bool MetadataBuilder::GrowPartition(Partition* partition, uint64_t aligned_size)
         }
 
         uint64_t sectors = std::min(sectors_needed, region.length());
+        if (sectors < region.length()) {
+            const auto& block_device = block_devices_[region.device_index];
+            if (block_device.alignment) {
+                const uint64_t alignment = block_device.alignment / LP_SECTOR_SIZE;
+                sectors = AlignTo(sectors, alignment);
+                sectors = std::min(sectors, region.length());
+            }
+        }
         CHECK(sectors % sectors_per_block == 0);
 
         auto extent = std::make_unique<LinearExtent>(sectors, region.device_index, region.start);
         new_extents.push_back(std::move(extent));
-        sectors_needed -= sectors;
-        if (!sectors_needed) {
+        if (sectors >= sectors_needed) {
+            sectors_needed = 0;
             break;
         }
+        sectors_needed -= sectors;
     }
     if (sectors_needed) {
         LERROR << "Not enough free space to expand partition: " << partition->name();
@@ -598,11 +643,49 @@ bool MetadataBuilder::GrowPartition(Partition* partition, uint64_t aligned_size)
     return true;
 }
 
+std::vector<MetadataBuilder::Interval> MetadataBuilder::PrioritizeSecondHalfOfSuper(
+        const std::vector<Interval>& free_list) {
+    const auto& super = block_devices_[0];
+    uint64_t first_sector = super.first_logical_sector;
+    uint64_t last_sector = super.size / LP_SECTOR_SIZE;
+    uint64_t midpoint = first_sector + (last_sector - first_sector) / 2;
+
+    // Choose an aligned sector for the midpoint. This could lead to one half
+    // being slightly larger than the other, but this will not restrict the
+    // size of partitions (it might lead to one extra extent if "B" overflows).
+    midpoint = AlignSector(super, midpoint);
+
+    std::vector<Interval> first_half;
+    std::vector<Interval> second_half;
+    for (const auto& region : free_list) {
+        // Note: deprioritze if not the main super partition. Even though we
+        // don't call this for retrofit devices, we will allow adding additional
+        // block devices on non-retrofit devices.
+        if (region.device_index != 0 || region.end <= midpoint) {
+            first_half.emplace_back(region);
+            continue;
+        }
+        if (region.start < midpoint && region.end > midpoint) {
+            // Split this into two regions.
+            first_half.emplace_back(region.device_index, region.start, midpoint);
+            second_half.emplace_back(region.device_index, midpoint, region.end);
+        } else {
+            second_half.emplace_back(region);
+        }
+    }
+    second_half.insert(second_half.end(), first_half.begin(), first_half.end());
+    return second_half;
+}
+
 void MetadataBuilder::ShrinkPartition(Partition* partition, uint64_t aligned_size) {
     partition->ShrinkTo(aligned_size);
 }
 
 std::unique_ptr<LpMetadata> MetadataBuilder::Export() {
+    if (!ValidatePartitionGroups()) {
+        return nullptr;
+    }
+
     std::unique_ptr<LpMetadata> metadata = std::make_unique<LpMetadata>();
     metadata->header = header_;
     metadata->geometry = geometry_;
@@ -622,6 +705,9 @@ std::unique_ptr<LpMetadata> MetadataBuilder::Export() {
         if (group->name().size() > sizeof(out.name)) {
             LERROR << "Partition group name is too long: " << group->name();
             return nullptr;
+        }
+        if (auto_slot_suffixing_ && group->name() != kDefaultGroup) {
+            out.flags |= LP_GROUP_SLOT_SUFFIXED;
         }
         strncpy(out.name, group->name().c_str(), sizeof(out.name));
         out.maximum_size = group->maximum_size();
@@ -752,9 +838,10 @@ bool MetadataBuilder::UpdateBlockDeviceInfo(size_t index, const BlockDeviceInfo&
                << block_device.size << ")";
         return false;
     }
-    if (device_info.logical_block_size != geometry_.logical_block_size) {
-        LERROR << "Device logical block size does not match (got " << device_info.logical_block_size
-               << ", expected " << geometry_.logical_block_size << ")";
+    if (geometry_.logical_block_size % device_info.logical_block_size) {
+        LERROR << "Device logical block size is misaligned (block size="
+               << device_info.logical_block_size << ", alignment=" << geometry_.logical_block_size
+               << ")";
         return false;
     }
 
@@ -802,7 +889,7 @@ std::vector<std::string> MetadataBuilder::ListGroups() const {
 }
 
 void MetadataBuilder::RemoveGroupAndPartitions(const std::string& group_name) {
-    if (group_name == "default") {
+    if (group_name == kDefaultGroup) {
         // Cannot remove the default group.
         return;
     }
@@ -895,6 +982,82 @@ bool MetadataBuilder::ImportPartition(const LpMetadata& metadata,
 
 void MetadataBuilder::SetAutoSlotSuffixing() {
     auto_slot_suffixing_ = true;
+}
+
+void MetadataBuilder::IgnoreSlotSuffixing() {
+    ignore_slot_suffixing_ = true;
+}
+
+bool MetadataBuilder::IsABDevice() const {
+    if (sABOverrideSet) {
+        return sABOverrideValue;
+    }
+    return android::base::GetBoolProperty("ro.build.ab_update", false);
+}
+
+bool MetadataBuilder::IsRetrofitDevice() const {
+    return GetBlockDevicePartitionName(block_devices_[0]) != LP_METADATA_DEFAULT_PARTITION_NAME;
+}
+
+bool MetadataBuilder::AddLinearExtent(Partition* partition, const std::string& block_device,
+                                      uint64_t num_sectors, uint64_t physical_sector) {
+    uint32_t device_index;
+    if (!FindBlockDeviceByName(block_device, &device_index)) {
+        LERROR << "Could not find backing block device for extent: " << block_device;
+        return false;
+    }
+
+    auto extent = std::make_unique<LinearExtent>(num_sectors, device_index, physical_sector);
+    partition->AddExtent(std::move(extent));
+    return true;
+}
+
+std::vector<Partition*> MetadataBuilder::ListPartitionsInGroup(const std::string& group_name) {
+    std::vector<Partition*> partitions;
+    for (const auto& partition : partitions_) {
+        if (partition->group_name() == group_name) {
+            partitions.emplace_back(partition.get());
+        }
+    }
+    return partitions;
+}
+
+bool MetadataBuilder::ChangePartitionGroup(Partition* partition, const std::string& group_name) {
+    if (!FindGroup(group_name)) {
+        LERROR << "Partition cannot change to unknown group: " << group_name;
+        return false;
+    }
+    partition->set_group_name(group_name);
+    return true;
+}
+
+bool MetadataBuilder::ValidatePartitionGroups() const {
+    for (const auto& group : groups_) {
+        if (!group->maximum_size()) {
+            continue;
+        }
+        uint64_t used = TotalSizeOfGroup(group.get());
+        if (used > group->maximum_size()) {
+            LERROR << "Partition group " << group->name() << " exceeds maximum size (" << used
+                   << " bytes used, maximum " << group->maximum_size() << ")";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool MetadataBuilder::ChangeGroupSize(const std::string& group_name, uint64_t maximum_size) {
+    if (group_name == kDefaultGroup) {
+        LERROR << "Cannot change the size of the default group";
+        return false;
+    }
+    PartitionGroup* group = FindGroup(group_name);
+    if (!group) {
+        LERROR << "Cannot change size of unknown partition group: " << group_name;
+        return false;
+    }
+    group->set_maximum_size(maximum_size);
+    return true;
 }
 
 }  // namespace fs_mgr

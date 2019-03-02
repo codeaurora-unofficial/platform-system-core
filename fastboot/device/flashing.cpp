@@ -52,15 +52,17 @@ void WipeOverlayfsForPartition(FastbootDevice* device, const std::string& partit
     // Following appears to have a first time 2% impact on flashing speeds.
 
     // Convert partition_name to a validated mount point and wipe.
-    std::unique_ptr<fstab, decltype(&fs_mgr_free_fstab)> fstab(fs_mgr_read_fstab_default(),
-                                                               fs_mgr_free_fstab);
-    for (auto i = 0; i < fstab->num_entries; i++) {
-        const auto mount_point = fstab->recs[i].mount_point;
-        if (!mount_point) continue;
-        auto partition = android::base::Basename(mount_point);
-        if ("/"s == mount_point) partition = "system";
+    Fstab fstab;
+    ReadDefaultFstab(&fstab);
+
+    for (const auto& entry : fstab) {
+        auto partition = android::base::Basename(entry.mount_point);
+        if ("/" == entry.mount_point) {
+            partition = "system";
+        }
+
         if ((partition + device->GetCurrentSlot()) == partition_name) {
-            fs_mgr_overlayfs_teardown(mount_point);
+            fs_mgr_overlayfs_teardown(entry.mount_point.c_str());
         }
     }
 }
@@ -143,6 +145,11 @@ bool UpdateSuper(FastbootDevice* device, const std::string& super_name, bool wip
         return device->WriteFail("Data is not a valid logical partition metadata image");
     }
 
+    if (!FindPhysicalPartition(super_name)) {
+        return device->WriteFail("Cannot find " + super_name +
+                                 ", build may be missing broken or missing boot_devices");
+    }
+
     // If we are unable to read the existing metadata, then the super partition
     // is corrupt. In this case we reflash the whole thing using the provided
     // image.
@@ -153,6 +160,7 @@ bool UpdateSuper(FastbootDevice* device, const std::string& super_name, bool wip
         if (!FlashPartitionTable(super_name, *new_metadata.get())) {
             return device->WriteFail("Unable to flash new partition table");
         }
+        fs_mgr_overlayfs_teardown();
         return device->WriteOkay("Successfully flashed partition table");
     }
 
@@ -183,13 +191,9 @@ bool UpdateSuper(FastbootDevice* device, const std::string& super_name, bool wip
     }
 
     // Write the new table to every metadata slot.
-    bool ok = true;
-    for (size_t i = 0; i < new_metadata->geometry.metadata_slot_count; i++) {
-        ok &= UpdatePartitionTable(super_name, *new_metadata.get(), i);
-    }
-
-    if (!ok) {
+    if (!UpdateAllPartitionMetadata(device, super_name, *new_metadata.get())) {
         return device->WriteFail("Unable to write new partition table");
     }
+    fs_mgr_overlayfs_teardown();
     return device->WriteOkay("Successfully updated partition table");
 }

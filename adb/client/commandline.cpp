@@ -142,22 +142,23 @@ static void help() {
         "     -x: disable remote exit codes and stdout/stderr separation\n"
         " emu COMMAND              run emulator console command\n"
         "\n"
-        "app installation:\n"
+        "app installation (see also `adb shell cmd package help`):\n"
         " install [-lrtsdg] [--instant] PACKAGE\n"
+        "     push a single package to the device and install it\n"
         " install-multiple [-lrtsdpg] [--instant] PACKAGE...\n"
-        "     push package(s) to the device and install them\n"
-        "     -l: forward lock application\n"
+        "     push multiple APKs to the device for a single package and install them\n"
+        " install-multi-package [-lrtsdpg] [--instant] PACKAGE...\n"
+        "     push one or more packages to the device and install them atomically\n"
         "     -r: replace existing application\n"
         "     -t: allow test packages\n"
-        "     -s: install application on sdcard\n"
         "     -d: allow version code downgrade (debuggable packages only)\n"
         "     -p: partial application install (install-multiple only)\n"
         "     -g: grant all runtime permissions\n"
         "     --instant: cause the app to be installed as an ephemeral install app\n"
         "     --no-streaming: always push APK to device and invoke Package Manager as separate steps\n"
         "     --streaming: force streaming APK directly into Package Manager\n"
-        "     --fastdeploy: use fast deploy (only valid with -r)\n"
-        "     --no-fastdeploy: prevent use of fast deploy (only valid with -r)\n"
+        "     --fastdeploy: use fast deploy\n"
+        "     --no-fastdeploy: prevent use of fast deploy\n"
         "     --force-agent: force update of deployment agent when using fast deploy\n"
         "     --date-check-agent: update deployment agent when local version is newer and using fast deploy\n"
         "     --version-check-agent: update deployment agent when local version has different version code and using fast deploy\n"
@@ -185,7 +186,6 @@ static void help() {
         " enable-verity            re-enable dm-verity checking on userdebug builds\n"
         " keygen FILE\n"
         "     generate adb public/private key; private key stored in FILE,\n"
-        "     public key stored in FILE.pub (existing files overwritten)\n"
         "\n"
         "scripting:\n"
         " wait-for[-TRANSPORT]-STATE\n"
@@ -195,7 +195,9 @@ static void help() {
         " get-state                print offline | bootloader | device\n"
         " get-serialno             print <serial-number>\n"
         " get-devpath              print <device-path>\n"
-        " remount                  remount partitions read-write\n"
+        " remount [-R]\n"
+        "      remount partitions read-write. if a reboot is required, -R will\n"
+        "      will automatically reboot the device.\n"
         " reboot [bootloader|recovery|sideload|sideload-auto-reboot]\n"
         "     reboot the device; defaults to booting system image but\n"
         "     supports bootloader and recovery too. sideload reboots\n"
@@ -582,12 +584,8 @@ static std::string ShellServiceString(bool use_shell_protocol,
 //
 // On success returns the remote exit code if |use_shell_protocol| is true,
 // 0 otherwise. On failure returns 1.
-static int RemoteShell(bool use_shell_protocol, const std::string& type_arg,
-                       char escape_char,
-                       const std::string& command) {
-    std::string service_string = ShellServiceString(use_shell_protocol,
-                                                    type_arg, command);
-
+static int RemoteShell(bool use_shell_protocol, const std::string& type_arg, char escape_char,
+                       bool empty_command, const std::string& service_string) {
     // Old devices can't handle a service string that's longer than MAX_PAYLOAD_V1.
     // Use |use_shell_protocol| to determine whether to allow a command longer than that.
     if (service_string.size() > MAX_PAYLOAD_V1 && !use_shell_protocol) {
@@ -598,8 +596,7 @@ static int RemoteShell(bool use_shell_protocol, const std::string& type_arg,
     // Make local stdin raw if the device allocates a PTY, which happens if:
     //   1. We are explicitly asking for a PTY shell, or
     //   2. We don't specify shell type and are starting an interactive session.
-    bool raw_stdin = (type_arg == kShellServiceArgPty ||
-                      (type_arg.empty() && command.empty()));
+    bool raw_stdin = (type_arg == kShellServiceArgPty || (type_arg.empty() && empty_command));
 
     std::string error;
     int fd = adb_connect(service_string, &error);
@@ -759,12 +756,45 @@ static int adb_shell(int argc, const char** argv) {
         command = android::base::Join(std::vector<const char*>(argv + optind, argv + argc), ' ');
     }
 
-    return RemoteShell(use_shell_protocol, shell_type_arg, escape_char, command);
+    std::string service_string = ShellServiceString(use_shell_protocol, shell_type_arg, command);
+    return RemoteShell(use_shell_protocol, shell_type_arg, escape_char, command.empty(),
+                       service_string);
+}
+
+static int adb_abb(int argc, const char** argv) {
+    FeatureSet features;
+    std::string error_message;
+    if (!adb_get_feature_set(&features, &error_message)) {
+        fprintf(stderr, "error: %s\n", error_message.c_str());
+        return 1;
+    }
+
+    if (!CanUseFeature(features, kFeatureAbb)) {
+        error_exit("abb is not supported by the device");
+    }
+
+    // Defaults.
+    constexpr char escape_char = '~';  // -e
+    constexpr bool use_shell_protocol = true;
+    constexpr auto shell_type_arg = kShellServiceArgRaw;
+    constexpr bool empty_command = false;
+
+    std::string service_string("abb:");
+    for (auto i = optind; i < argc; ++i) {
+        service_string.append(argv[i]);
+        service_string.push_back(ABB_ARG_DELIMETER);
+    }
+
+    D("abb -e 0x%x [%*.s]\n", escape_char, static_cast<int>(service_string.size()),
+      service_string.data());
+
+    return RemoteShell(use_shell_protocol, shell_type_arg, escape_char, empty_command,
+                       service_string);
 }
 
 static int adb_sideload_legacy(const char* filename, int in_fd, int size) {
     std::string error;
-    int out_fd = adb_connect(android::base::StringPrintf("sideload:%d", size), &error);
+    unique_fd out_fd(adb_connect(android::base::StringPrintf("sideload:%d", size), &error));
     if (out_fd < 0) {
         fprintf(stderr, "adb: pre-KitKat sideload connection failed: %s\n", error.c_str());
         return -1;
@@ -779,14 +809,12 @@ static int adb_sideload_legacy(const char* filename, int in_fd, int size) {
         unsigned xfer = (size > CHUNK_SIZE) ? CHUNK_SIZE : size;
         if (!ReadFdExactly(in_fd, buf, xfer)) {
             fprintf(stderr, "adb: failed to read data from %s: %s\n", filename, strerror(errno));
-            adb_close(out_fd);
             return -1;
         }
         if (!WriteFdExactly(out_fd, buf, xfer)) {
             std::string error;
             adb_status(out_fd, &error);
             fprintf(stderr, "adb: failed to write data: %s\n", error.c_str());
-            adb_close(out_fd);
             return -1;
         }
         size -= xfer;
@@ -797,11 +825,9 @@ static int adb_sideload_legacy(const char* filename, int in_fd, int size) {
 
     if (!adb_status(out_fd, &error)) {
         fprintf(stderr, "adb: error response: %s\n", error.c_str());
-        adb_close(out_fd);
         return -1;
     }
 
-    adb_close(out_fd);
     return 0;
 }
 
@@ -1061,7 +1087,7 @@ static bool adb_root(const char* command) {
 
 int send_shell_command(const std::string& command, bool disable_shell_protocol,
                        StandardStreamsCallbackInterface* callback) {
-    int fd;
+    unique_fd fd;
     bool use_shell_protocol = false;
 
     while (true) {
@@ -1084,7 +1110,7 @@ int send_shell_command(const std::string& command, bool disable_shell_protocol,
             std::string error;
             std::string service_string = ShellServiceString(use_shell_protocol, "", command);
 
-            fd = adb_connect(service_string, &error);
+            fd.reset(adb_connect(service_string, &error));
             if (fd >= 0) {
                 break;
             }
@@ -1096,13 +1122,7 @@ int send_shell_command(const std::string& command, bool disable_shell_protocol,
         }
     }
 
-    int exit_code = read_and_dump(fd, use_shell_protocol, callback);
-
-    if (adb_close(fd) < 0) {
-        PLOG(ERROR) << "failure closing FD " << fd;
-    }
-
-    return exit_code;
+    return read_and_dump(fd.get(), use_shell_protocol, callback);
 }
 
 static int logcat(int argc, const char** argv) {
@@ -1166,7 +1186,7 @@ static int backup(int argc, const char** argv) {
     if (argc < 2) error_exit("backup either needs a list of packages or -all/-shared");
 
     adb_unlink(filename);
-    int outFd = adb_creat(filename, 0640);
+    unique_fd outFd(adb_creat(filename, 0640));
     if (outFd < 0) {
         fprintf(stderr, "adb: backup unable to create file '%s': %s\n", filename, strerror(errno));
         return EXIT_FAILURE;
@@ -1181,20 +1201,16 @@ static int backup(int argc, const char** argv) {
 
     D("backup. filename=%s cmd=%s", filename, cmd.c_str());
     std::string error;
-    int fd = adb_connect(cmd, &error);
+    unique_fd fd(adb_connect(cmd, &error));
     if (fd < 0) {
         fprintf(stderr, "adb: unable to connect for backup: %s\n", error.c_str());
-        adb_close(outFd);
         return EXIT_FAILURE;
     }
 
     fprintf(stdout, "Now unlock your device and confirm the backup operation...\n");
     fflush(stdout);
 
-    copy_to_file(fd, outFd);
-
-    adb_close(fd);
-    adb_close(outFd);
+    copy_to_file(fd.get(), outFd.get());
     return EXIT_SUCCESS;
 }
 
@@ -1202,33 +1218,29 @@ static int restore(int argc, const char** argv) {
     if (argc != 2) error_exit("restore requires an argument");
 
     const char* filename = argv[1];
-    int tarFd = adb_open(filename, O_RDONLY);
+    unique_fd tarFd(adb_open(filename, O_RDONLY));
     if (tarFd < 0) {
         fprintf(stderr, "adb: unable to open file %s: %s\n", filename, strerror(errno));
         return -1;
     }
 
     std::string error;
-    int fd = adb_connect("restore:", &error);
+    unique_fd fd(adb_connect("restore:", &error));
     if (fd < 0) {
         fprintf(stderr, "adb: unable to connect for restore: %s\n", error.c_str());
-        adb_close(tarFd);
         return -1;
     }
 
     fprintf(stdout, "Now unlock your device and confirm the restore operation.\n");
     fflush(stdout);
 
-    copy_to_file(tarFd, fd);
+    copy_to_file(tarFd.get(), fd.get());
 
     // Provide an in-band EOD marker in case the archive file is malformed
-    write_zeros(512*2, fd);
+    write_zeros(512 * 2, fd);
 
     // Wait until the other side finishes, or it'll get sent SIGHUP.
-    copy_to_file(fd, STDOUT_FILENO);
-
-    adb_close(fd);
-    adb_close(tarFd);
+    copy_to_file(fd.get(), STDOUT_FILENO);
     return 0;
 }
 
@@ -1268,13 +1280,47 @@ static void parse_push_pull_args(const char** arg, int narg, std::vector<const c
 
 static int adb_connect_command(const std::string& command) {
     std::string error;
-    int fd = adb_connect(command, &error);
+    unique_fd fd(adb_connect(command, &error));
     if (fd < 0) {
         fprintf(stderr, "error: %s\n", error.c_str());
         return 1;
     }
     read_and_dump(fd);
-    adb_close(fd);
+    return 0;
+}
+
+static int adb_connect_command_bidirectional(const std::string& command) {
+    std::string error;
+    unique_fd fd(adb_connect(command, &error));
+    if (fd < 0) {
+        fprintf(stderr, "error: %s\n", error.c_str());
+        return 1;
+    }
+
+    static constexpr auto forward = [](int src, int sink, bool exit_on_end) {
+        char buf[4096];
+        while (true) {
+            int rc = adb_read(src, buf, sizeof(buf));
+            if (rc == 0) {
+                if (exit_on_end) {
+                    exit(0);
+                } else {
+                    adb_shutdown(sink, SHUT_WR);
+                }
+                return;
+            } else if (rc < 0) {
+                perror_exit("read failed");
+            }
+            if (!WriteFdExactly(sink, buf, rc)) {
+                perror_exit("write failed");
+            }
+        }
+    };
+
+    std::thread read(forward, fd.get(), STDOUT_FILENO, true);
+    std::thread write(forward, STDIN_FILENO, fd.get(), false);
+    read.join();
+    write.join();
     return 0;
 }
 
@@ -1513,14 +1559,13 @@ int adb_commandline(int argc, const char** argv) {
         std::string query = android::base::StringPrintf("host:disconnect:%s",
                                                         (argc == 2) ? argv[1] : "");
         return adb_query_command(query);
-    }
-    else if (!strcmp(argv[0], "emu")) {
+    } else if (!strcmp(argv[0], "abb")) {
+        return adb_abb(argc, argv);
+    } else if (!strcmp(argv[0], "emu")) {
         return adb_send_emulator_command(argc, argv, serial);
-    }
-    else if (!strcmp(argv[0], "shell")) {
+    } else if (!strcmp(argv[0], "shell")) {
         return adb_shell(argc, argv);
-    }
-    else if (!strcmp(argv[0], "exec-in") || !strcmp(argv[0], "exec-out")) {
+    } else if (!strcmp(argv[0], "exec-in") || !strcmp(argv[0], "exec-out")) {
         int exec_in = !strcmp(argv[0], "exec-in");
 
         if (argc < 2) error_exit("usage: adb %s command", argv[0]);
@@ -1534,25 +1579,21 @@ int adb_commandline(int argc, const char** argv) {
         }
 
         std::string error;
-        int fd = adb_connect(cmd, &error);
+        unique_fd fd(adb_connect(cmd, &error));
         if (fd < 0) {
             fprintf(stderr, "error: %s\n", error.c_str());
             return -1;
         }
 
         if (exec_in) {
-            copy_to_file(STDIN_FILENO, fd);
+            copy_to_file(STDIN_FILENO, fd.get());
         } else {
-            copy_to_file(fd, STDOUT_FILENO);
+            copy_to_file(fd.get(), STDOUT_FILENO);
         }
-
-        adb_close(fd);
         return 0;
-    }
-    else if (!strcmp(argv[0], "kill-server")) {
+    } else if (!strcmp(argv[0], "kill-server")) {
         return adb_kill_server() ? 0 : 1;
-    }
-    else if (!strcmp(argv[0], "sideload")) {
+    } else if (!strcmp(argv[0], "sideload")) {
         if (argc != 2) error_exit("sideload requires an argument");
         if (adb_sideload_host(argv[1])) {
             return 1;
@@ -1643,9 +1684,8 @@ int adb_commandline(int argc, const char** argv) {
             error_exit("error: %s", error_message.c_str());
         }
 
-        int fd = adb_connect(cmd, &error_message);
-        if (fd < 0 || !adb_status(fd, &error_message)) {
-            adb_close(fd);
+        unique_fd fd(adb_connect(cmd, &error_message));
+        if (fd < 0 || !adb_status(fd.get(), &error_message)) {
             error_exit("error: %s", error_message.c_str());
         }
 
@@ -1662,8 +1702,7 @@ int adb_commandline(int argc, const char** argv) {
     else if (!strcmp(argv[0], "ls")) {
         if (argc != 2) error_exit("ls requires an argument");
         return do_sync_ls(argv[1]) ? 0 : 1;
-    }
-    else if (!strcmp(argv[0], "push")) {
+    } else if (!strcmp(argv[0], "push")) {
         bool copy_attrs = false;
         bool sync = false;
         std::vector<const char*> srcs;
@@ -1672,8 +1711,7 @@ int adb_commandline(int argc, const char** argv) {
         parse_push_pull_args(&argv[1], argc - 1, &srcs, &dst, &copy_attrs, &sync);
         if (srcs.empty() || !dst) error_exit("push requires an argument");
         return do_sync_push(srcs, dst, sync) ? 0 : 1;
-    }
-    else if (!strcmp(argv[0], "pull")) {
+    } else if (!strcmp(argv[0], "pull")) {
         bool copy_attrs = false;
         std::vector<const char*> srcs;
         const char* dst = ".";
@@ -1681,20 +1719,19 @@ int adb_commandline(int argc, const char** argv) {
         parse_push_pull_args(&argv[1], argc - 1, &srcs, &dst, &copy_attrs, nullptr);
         if (srcs.empty()) error_exit("pull requires an argument");
         return do_sync_pull(srcs, dst, copy_attrs) ? 0 : 1;
-    }
-    else if (!strcmp(argv[0], "install")) {
+    } else if (!strcmp(argv[0], "install")) {
         if (argc < 2) error_exit("install requires an argument");
         return install_app(argc, argv);
-    }
-    else if (!strcmp(argv[0], "install-multiple")) {
+    } else if (!strcmp(argv[0], "install-multiple")) {
         if (argc < 2) error_exit("install-multiple requires an argument");
         return install_multiple_app(argc, argv);
-    }
-    else if (!strcmp(argv[0], "uninstall")) {
+    } else if (!strcmp(argv[0], "install-multi-package")) {
+        if (argc < 3) error_exit("install-multi-package requires an argument");
+        return install_multi_package(argc, argv);
+    } else if (!strcmp(argv[0], "uninstall")) {
         if (argc < 2) error_exit("uninstall requires an argument");
         return uninstall_app(argc, argv);
-    }
-    else if (!strcmp(argv[0], "sync")) {
+    } else if (!strcmp(argv[0], "sync")) {
         std::string src;
         bool list_only = false;
         if (argc < 2) {
@@ -1724,61 +1761,53 @@ int adb_commandline(int argc, const char** argv) {
         return 0;
     }
     /* passthrough commands */
-    else if (!strcmp(argv[0],"get-state") ||
-        !strcmp(argv[0],"get-serialno") ||
-        !strcmp(argv[0],"get-devpath"))
-    {
+    else if (!strcmp(argv[0], "get-state") || !strcmp(argv[0], "get-serialno") ||
+             !strcmp(argv[0], "get-devpath")) {
         return adb_query_command(format_host_command(argv[0]));
     }
     /* other commands */
-    else if (!strcmp(argv[0],"logcat") || !strcmp(argv[0],"lolcat") || !strcmp(argv[0],"longcat")) {
+    else if (!strcmp(argv[0], "logcat") || !strcmp(argv[0], "lolcat") ||
+             !strcmp(argv[0], "longcat")) {
         return logcat(argc, argv);
-    }
-    else if (!strcmp(argv[0],"ppp")) {
+    } else if (!strcmp(argv[0], "ppp")) {
         return ppp(argc, argv);
-    }
-    else if (!strcmp(argv[0], "start-server")) {
+    } else if (!strcmp(argv[0], "start-server")) {
         std::string error;
         const int result = adb_connect("host:start-server", &error);
         if (result < 0) {
             fprintf(stderr, "error: %s\n", error.c_str());
         }
         return result;
-    }
-    else if (!strcmp(argv[0], "backup")) {
+    } else if (!strcmp(argv[0], "backup")) {
         return backup(argc, argv);
-    }
-    else if (!strcmp(argv[0], "restore")) {
+    } else if (!strcmp(argv[0], "restore")) {
         return restore(argc, argv);
-    }
-    else if (!strcmp(argv[0], "keygen")) {
+    } else if (!strcmp(argv[0], "keygen")) {
         if (argc != 2) error_exit("keygen requires an argument");
         // Always print key generation information for keygen command.
         adb_trace_enable(AUTH);
         return adb_auth_keygen(argv[1]);
-    }
-    else if (!strcmp(argv[0], "jdwp")) {
+    } else if (!strcmp(argv[0], "pubkey")) {
+        if (argc != 2) error_exit("pubkey requires an argument");
+        return adb_auth_pubkey(argv[1]);
+    } else if (!strcmp(argv[0], "jdwp")) {
         return adb_connect_command("jdwp");
-    }
-    else if (!strcmp(argv[0], "track-jdwp")) {
+    } else if (!strcmp(argv[0], "track-jdwp")) {
         return adb_connect_command("track-jdwp");
-    }
-    else if (!strcmp(argv[0], "track-devices")) {
+    } else if (!strcmp(argv[0], "track-devices")) {
         return adb_connect_command("host:track-devices");
     } else if (!strcmp(argv[0], "raw")) {
         if (argc != 2) {
             error_exit("usage: adb raw SERVICE");
         }
-        return adb_connect_command(argv[1]);
+        return adb_connect_command_bidirectional(argv[1]);
     }
-
 
     /* "adb /?" is a common idiom under Windows */
     else if (!strcmp(argv[0], "--help") || !strcmp(argv[0], "help") || !strcmp(argv[0], "/?")) {
         help();
         return 0;
-    }
-    else if (!strcmp(argv[0], "--version") || !strcmp(argv[0], "version")) {
+    } else if (!strcmp(argv[0], "--version") || !strcmp(argv[0], "version")) {
         fprintf(stdout, "%s", adb_version().c_str());
         return 0;
     } else if (!strcmp(argv[0], "features")) {

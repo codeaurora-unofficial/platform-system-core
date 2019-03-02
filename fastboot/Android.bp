@@ -43,6 +43,7 @@ cc_library_host_static {
         "libgtest_main",
         "libbase",
         "libadb_host",
+        "liblp",
     ],
 
     header_libs: [
@@ -131,6 +132,7 @@ cc_binary {
         "libext2_uuid",
         "libext4_utils",
         "libfs_mgr",
+        "libgsi",
         "libhidlbase",
         "libhidltransport",
         "libhwbinder",
@@ -143,8 +145,6 @@ cc_binary {
     static_libs: [
         "libhealthhalutils",
     ],
-
-    cpp_std: "c++17",
 }
 
 cc_defaults {
@@ -173,6 +173,11 @@ cc_defaults {
 
             host_ldlibs: ["-lws2_32"],
         },
+        not_windows: {
+            static_libs: [
+                "libext4_utils",
+            ],
+        },
     },
 
     stl: "libc++_static",
@@ -193,6 +198,8 @@ cc_defaults {
         "libbase",
         "libcutils",
         "libgtest_host",
+        "liblp",
+        "libcrypto",
     ],
 }
 
@@ -204,7 +211,6 @@ cc_library_host_static {
     name: "libfastboot",
     defaults: ["fastboot_host_defaults"],
 
-    cpp_std: "c++17",
     srcs: [
         "bootimg_utils.cpp",
         "fastboot.cpp",
@@ -252,6 +258,13 @@ cc_binary_host {
         "mke2fs",
         "make_f2fs",
     ],
+    dist: {
+        targets: [
+            "dist_files",
+            "sdk",
+            "win_sdk",
+        ],
+    },
 
     target: {
         not_windows: {

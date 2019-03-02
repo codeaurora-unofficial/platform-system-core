@@ -84,7 +84,6 @@ std::string SerializeMetadata(const LpMetadata& input) {
 // with potentially invalid metadata, or random partition data with metadata.
 static bool ValidateAndSerializeMetadata(const IPartitionOpener& opener, const LpMetadata& metadata,
                                          const std::string& slot_suffix, std::string* blob) {
-    const LpMetadataHeader& header = metadata.header;
     const LpMetadataGeometry& geometry = metadata.geometry;
 
     *blob = SerializeMetadata(metadata);
@@ -235,6 +234,10 @@ static bool DefaultWriter(int fd, const std::string& blob) {
     return android::base::WriteFully(fd, blob.data(), blob.size());
 }
 
+#if defined(_WIN32)
+static const int O_SYNC = 0;
+#endif
+
 bool FlashPartitionTable(const IPartitionOpener& opener, const std::string& super_partition,
                          const LpMetadata& metadata) {
     android::base::unique_fd fd = opener.Open(super_partition, O_RDWR | O_SYNC);
@@ -254,6 +257,12 @@ bool FlashPartitionTable(const IPartitionOpener& opener, const std::string& supe
     std::string metadata_blob;
     if (!ValidateAndSerializeMetadata(opener, metadata, slot_suffix, &metadata_blob)) {
         return false;
+    }
+
+    // On retrofit devices, super_partition is system_other and might be set to readonly by
+    // fs_mgr_set_blk_ro(). Unset readonly so that fd can be written to.
+    if (!SetBlockReadonly(fd.get(), false)) {
+        PWARNING << __PRETTY_FUNCTION__ << " BLKROSET 0 failed: " << super_partition;
     }
 
     // Write zeroes to the first block.
@@ -364,11 +373,11 @@ bool UpdatePartitionTable(const IPartitionOpener& opener, const std::string& sup
         // safety.
         std::string old_blob;
         if (!ValidateAndSerializeMetadata(opener, *backup.get(), slot_suffix, &old_blob)) {
-            LERROR << "Error serializing primary metadata to repair corrupted backup";
+            LERROR << "Error serializing backup metadata to repair corrupted primary";
             return false;
         }
         if (!WritePrimaryMetadata(fd, metadata, slot_number, old_blob, writer)) {
-            LERROR << "Error writing primary metadata to repair corrupted backup";
+            LERROR << "Error writing backup metadata to repair corrupted primary";
             return false;
         }
     }

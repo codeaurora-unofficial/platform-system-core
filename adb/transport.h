@@ -28,6 +28,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <unordered_set>
 
@@ -37,6 +38,7 @@
 
 #include "adb.h"
 #include "adb_unique_fd.h"
+#include "usb.h"
 
 typedef std::unordered_set<std::string> FeatureSet;
 
@@ -63,6 +65,8 @@ extern const char* const kFeaturePushSync;
 extern const char* const kFeatureApex;
 // adbd has b/110953234 fixed.
 extern const char* const kFeatureFixedPushMkdir;
+// adbd supports android binder bridge (abb).
+extern const char* const kFeatureAbb;
 
 TransportId NextTransportId();
 
@@ -242,6 +246,9 @@ class atransport {
         return connection_;
     }
 
+    void SetUsbHandle(usb_handle* h) { usb_handle_ = h; }
+    usb_handle* GetUsbHandle() { return usb_handle_; }
+
     const TransportId id;
     size_t ref_count = 0;
     bool online = false;
@@ -258,6 +265,7 @@ class atransport {
 
 #if ADB_HOST
     std::shared_ptr<RSA> NextKey();
+    void ResetKeys();
 #endif
 
     char token[TOKEN_SIZE] = {};
@@ -332,6 +340,9 @@ class atransport {
     // The underlying connection object.
     std::shared_ptr<Connection> connection_ GUARDED_BY(mutex_);
 
+    // USB handle for the connection, if available.
+    usb_handle* usb_handle_ = nullptr;
+
     // A callback that will be invoked when the atransport needs to reconnect.
     ReconnectCallback reconnect_;
 
@@ -388,5 +399,16 @@ void close_usb_devices(std::function<bool(const atransport*)> predicate);
 void send_packet(apacket* p, atransport* t);
 
 asocket* create_device_tracker(bool long_output);
+
+#if !ADB_HOST
+unique_fd tcp_listen_inaddr_any(int port, std::string* error);
+void server_socket_thread(std::function<unique_fd(int, std::string*)> listen_func, int port);
+
+#if defined(__ANDROID__)
+void qemu_socket_thread(int port);
+bool use_qemu_goldfish();
+#endif
+
+#endif
 
 #endif   /* __TRANSPORT_H */

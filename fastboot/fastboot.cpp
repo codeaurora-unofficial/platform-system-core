@@ -46,6 +46,7 @@
 #include <chrono>
 #include <functional>
 #include <regex>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -58,6 +59,7 @@
 #include <android-base/strings.h>
 #include <android-base/unique_fd.h>
 #include <build/version.h>
+#include <liblp/liblp.h>
 #include <platform_tools_version.h>
 #include <sparse/sparse.h>
 #include <ziparchive/zip_archive.h>
@@ -77,6 +79,7 @@ using android::base::ReadFully;
 using android::base::Split;
 using android::base::Trim;
 using android::base::unique_fd;
+using namespace std::string_literals;
 
 static const char* serial = nullptr;
 
@@ -89,8 +92,9 @@ static uint64_t sparse_limit = 0;
 static int64_t target_sparse_limit = -1;
 
 static unsigned g_base_addr = 0x10000000;
-static boot_img_hdr_v1 g_boot_img_hdr = {};
+static boot_img_hdr_v2 g_boot_img_hdr = {};
 static std::string g_cmdline;
+static std::string g_dtb_path;
 
 static bool g_disable_verity = false;
 static bool g_disable_verification = false;
@@ -161,9 +165,17 @@ static Image images[] = {
         // clang-format on
 };
 
-static std::string find_item_given_name(const std::string& img_name) {
+static char* get_android_product_out() {
     char* dir = getenv("ANDROID_PRODUCT_OUT");
     if (dir == nullptr || dir[0] == '\0') {
+        return nullptr;
+    }
+    return dir;
+}
+
+static std::string find_item_given_name(const std::string& img_name) {
+    char* dir = get_android_product_out();
+    if (!dir) {
         die("ANDROID_PRODUCT_OUT not set");
     }
     return std::string(dir) + "/" + img_name;
@@ -376,17 +388,20 @@ static int show_help() {
             "                            Format a flash partition.\n"
             " set_active SLOT            Set the active slot.\n"
             " oem [COMMAND...]           Execute OEM-specific command.\n"
+            " gsi wipe|disable           Wipe or disable a GSI installation (fastbootd only).\n"
             "\n"
             "boot image:\n"
             " boot KERNEL [RAMDISK [SECOND]]\n"
             "                            Download and boot kernel from RAM.\n"
             " flash:raw PARTITION KERNEL [RAMDISK [SECOND]]\n"
             "                            Create boot image and flash it.\n"
+            " --dtb DTB                  Specify path to DTB for boot image header version 2.\n"
             " --cmdline CMDLINE          Override kernel command line.\n"
             " --base ADDRESS             Set kernel base address (default: 0x10000000).\n"
             " --kernel-offset            Set kernel offset (default: 0x00008000).\n"
             " --ramdisk-offset           Set ramdisk offset (default: 0x01000000).\n"
             " --tags-offset              Set tags offset (default: 0x00000100).\n"
+            " --dtb-offset               Set dtb offset (default: 0x01100000).\n"
             " --page-size BYTES          Set flash page size (default: 2048).\n"
             " --header-version VERSION   Set boot image header version.\n"
             " --os-version MAJOR[.MINOR[.PATCH]]\n"
@@ -407,6 +422,7 @@ static int show_help() {
             " -s SERIAL                  Specify a USB device.\n"
             " -s tcp|udp:HOST[:PORT]     Specify a network device.\n"
             " -S SIZE[K|M|G]             Break into sparse files no larger than SIZE.\n"
+            " --force                    Force a flash operation that may be unsafe.\n"
             " --slot SLOT                Use SLOT; 'all' for both slots, 'other' for\n"
             "                            non-current slot (default: current active slot).\n"
             " --set-active[=SLOT]        Sets the active slot before rebooting.\n"
@@ -435,12 +451,12 @@ static std::vector<char> LoadBootableImage(const std::string& kernel, const std:
     }
 
     // Is this actually a boot image?
-    if (kernel_data.size() < sizeof(boot_img_hdr_v1)) {
+    if (kernel_data.size() < sizeof(boot_img_hdr_v2)) {
         die("cannot load '%s': too short", kernel.c_str());
     }
     if (!memcmp(kernel_data.data(), BOOT_MAGIC, BOOT_MAGIC_SIZE)) {
         if (!g_cmdline.empty()) {
-            bootimg_set_cmdline(reinterpret_cast<boot_img_hdr_v1*>(kernel_data.data()), g_cmdline);
+            bootimg_set_cmdline(reinterpret_cast<boot_img_hdr_v2*>(kernel_data.data()), g_cmdline);
         }
 
         if (!ramdisk.empty()) die("cannot boot a boot.img *and* ramdisk");
@@ -461,15 +477,26 @@ static std::vector<char> LoadBootableImage(const std::string& kernel, const std:
             die("cannot load '%s': %s", second_stage.c_str(), strerror(errno));
         }
     }
+
+    std::vector<char> dtb_data;
+    if (!g_dtb_path.empty()) {
+        if (g_boot_img_hdr.header_version < 2) {
+                    die("Argument dtb not supported for boot image header version %d\n",
+                        g_boot_img_hdr.header_version);
+        }
+        if (!ReadFileToVector(g_dtb_path, &dtb_data)) {
+            die("cannot load '%s': %s", g_dtb_path.c_str(), strerror(errno));
+        }
+    }
+
     fprintf(stderr,"creating boot image...\n");
 
     std::vector<char> out;
-    boot_img_hdr_v1* boot_image_data = mkbootimg(kernel_data, ramdisk_data, second_stage_data,
-                                                 g_base_addr, g_boot_img_hdr, &out);
+    boot_img_hdr_v2* boot_image_data = mkbootimg(kernel_data, ramdisk_data, second_stage_data,
+                                                 dtb_data, g_base_addr, g_boot_img_hdr, &out);
 
     if (!g_cmdline.empty()) bootimg_set_cmdline(boot_image_data, g_cmdline);
     fprintf(stderr, "creating boot image - %zu bytes\n", out.size());
-
     return out;
 }
 
@@ -1096,6 +1123,14 @@ static bool is_logical(const std::string& partition) {
     return fb->GetVar("is-logical:" + partition, &value) == fastboot::SUCCESS && value == "yes";
 }
 
+static bool is_retrofit_device() {
+    std::string value;
+    if (fb->GetVar("super-partition-name", &value) != fastboot::SUCCESS) {
+        return false;
+    }
+    return android::base::StartsWith(value, "system_");
+}
+
 static void do_flash(const char* pname, const char* fname) {
     struct fastboot_buffer buf;
 
@@ -1138,6 +1173,10 @@ static void reboot_to_userspace_fastboot() {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     fb->set_transport(open_device());
+
+    if (!is_userspace_fastboot()) {
+        die("Failed to boot into userspace fastboot; one or more components might be unbootable.");
+    }
 }
 
 class ImageSource {
@@ -1294,9 +1333,6 @@ void FlashAllTool::UpdateSuperPartition() {
     if (!is_userspace_fastboot()) {
         reboot_to_userspace_fastboot();
     }
-    if (!is_userspace_fastboot()) {
-        die("Failed to boot into userspace; one or more components might be unbootable.");
-    }
 
     std::string super_name;
     if (fb->GetVar("super-partition-name", &super_name) != fastboot::RetCode::SUCCESS) {
@@ -1309,6 +1345,19 @@ void FlashAllTool::UpdateSuperPartition() {
         command += ":wipe";
     }
     fb->RawCommand(command, "Updating super partition");
+
+    // Retrofit devices have two super partitions, named super_a and super_b.
+    // On these devices, secondary slots must be flashed as physical
+    // partitions (otherwise they would not mount on first boot). To enforce
+    // this, we delete any logical partitions for the "other" slot.
+    if (is_retrofit_device()) {
+        for (const auto& [image, slot] : os_images_) {
+            std::string partition_name = image->part_name + "_"s + slot;
+            if (image->IsSecondary() && is_logical(partition_name)) {
+                fb->DeletePartition(partition_name);
+            }
+        }
+    }
 }
 
 class ZipImageSource final : public ImageSource {
@@ -1464,15 +1513,13 @@ static void fb_perform_format(
             fprintf(stderr, "File system type %s not supported.\n", partition_type.c_str());
             return;
         }
-        fprintf(stderr, "Formatting is not supported for file system with type '%s'.\n",
-                partition_type.c_str());
-        return;
+        die("Formatting is not supported for file system with type '%s'.",
+            partition_type.c_str());
     }
 
     int64_t size;
     if (!android::base::ParseInt(partition_size, &size)) {
-        fprintf(stderr, "Couldn't parse partition size '%s'.\n", partition_size.c_str());
-        return;
+        die("Couldn't parse partition size '%s'.", partition_size.c_str());
     }
 
     unsigned eraseBlkSize, logicalBlkSize;
@@ -1482,17 +1529,14 @@ static void fb_perform_format(
     if (fs_generator_generate(gen, output.path, size, initial_dir,
             eraseBlkSize, logicalBlkSize)) {
         die("Cannot generate image for %s", partition.c_str());
-        return;
     }
 
     fd.reset(open(output.path, O_RDONLY));
     if (fd == -1) {
-        fprintf(stderr, "Cannot open generated image: %s\n", strerror(errno));
-        return;
+        die("Cannot open generated image: %s", strerror(errno));
     }
     if (!load_buf_fd(fd.release(), &buf)) {
-        fprintf(stderr, "Cannot read image: %s\n", strerror(errno));
-        return;
+        die("Cannot read image: %s", strerror(errno));
     }
     flash_buf(partition, &buf);
     return;
@@ -1503,6 +1547,37 @@ failed:
         if (errMsg) fprintf(stderr, "%s", errMsg);
     }
     fprintf(stderr, "FAILED (%s)\n", fb->Error().c_str());
+    if (!skip_if_not_supported) {
+        die("Command failed");
+    }
+}
+
+static bool should_flash_in_userspace(const std::string& partition_name) {
+    if (!get_android_product_out()) {
+        return false;
+    }
+    auto path = find_item_given_name("super_empty.img");
+    if (path.empty() || access(path.c_str(), R_OK)) {
+        return false;
+    }
+    auto metadata = android::fs_mgr::ReadFromImageFile(path);
+    if (!metadata) {
+        return false;
+    }
+    for (const auto& partition : metadata->partitions) {
+        auto candidate = android::fs_mgr::GetPartitionName(partition);
+        if (partition.attributes & LP_PARTITION_ATTR_SLOT_SUFFIXED) {
+            // On retrofit devices, we don't know if, or whether, the A or B
+            // slot has been flashed for dynamic partitions. Instead we add
+            // both names to the list as a conservative guess.
+            if (candidate + "_a" == partition_name || candidate + "_b" == partition_name) {
+                return true;
+            }
+        } else if (candidate == partition_name) {
+            return true;
+        }
+    }
+    return false;
 }
 
 int FastBootTool::Main(int argc, char* argv[]) {
@@ -1515,6 +1590,7 @@ int FastBootTool::Main(int argc, char* argv[]) {
     bool wants_set_active = false;
     bool skip_secondary = false;
     bool set_fbe_marker = false;
+    bool force_flash = false;
     int longindex;
     std::string slot_override;
     std::string next_active;
@@ -1524,12 +1600,14 @@ int FastBootTool::Main(int argc, char* argv[]) {
     g_boot_img_hdr.second_addr = 0x00f00000;
     g_boot_img_hdr.tags_addr = 0x00000100;
     g_boot_img_hdr.page_size = 2048;
+    g_boot_img_hdr.dtb_addr = 0x01100000;
 
     const struct option longopts[] = {
         {"base", required_argument, 0, 0},
         {"cmdline", required_argument, 0, 0},
         {"disable-verification", no_argument, 0, 0},
         {"disable-verity", no_argument, 0, 0},
+        {"force", no_argument, 0, 0},
         {"header-version", required_argument, 0, 0},
         {"help", no_argument, 0, 'h'},
         {"kernel-offset", required_argument, 0, 0},
@@ -1542,6 +1620,8 @@ int FastBootTool::Main(int argc, char* argv[]) {
         {"skip-secondary", no_argument, 0, 0},
         {"slot", required_argument, 0, 0},
         {"tags-offset", required_argument, 0, 0},
+        {"dtb", required_argument, 0, 0},
+        {"dtb-offset", required_argument, 0, 0},
         {"unbuffered", no_argument, 0, 0},
         {"verbose", no_argument, 0, 'v'},
         {"version", no_argument, 0, 0},
@@ -1565,8 +1645,12 @@ int FastBootTool::Main(int argc, char* argv[]) {
                 g_disable_verification = true;
             } else if (name == "disable-verity") {
                 g_disable_verity = true;
+            } else if (name == "force") {
+                force_flash = true;
             } else if (name == "header-version") {
                 g_boot_img_hdr.header_version = strtoul(optarg, nullptr, 0);
+            } else if (name == "dtb") {
+                g_dtb_path = optarg;
             } else if (name == "kernel-offset") {
                 g_boot_img_hdr.kernel_addr = strtoul(optarg, 0, 16);
             } else if (name == "os-patch-level") {
@@ -1584,6 +1668,8 @@ int FastBootTool::Main(int argc, char* argv[]) {
                 skip_secondary = true;
             } else if (name == "slot") {
                 slot_override = optarg;
+            } else if (name == "dtb-offset") {
+                g_boot_img_hdr.dtb_addr = strtoul(optarg, 0, 16);
             } else if (name == "tags-offset") {
                 g_boot_img_hdr.tags_addr = strtoul(optarg, 0, 16);
             } else if (name == "unbuffered") {
@@ -1763,7 +1849,6 @@ int FastBootTool::Main(int argc, char* argv[]) {
             if (!args.empty()) ramdisk = next_arg(&args);
             std::string second_stage;
             if (!args.empty()) second_stage = next_arg(&args);
-
             auto data = LoadBootableImage(kernel, ramdisk, second_stage);
             fb->Download("boot.img", data);
             fb->Boot();
@@ -1779,6 +1864,16 @@ int FastBootTool::Main(int argc, char* argv[]) {
             if (fname.empty()) die("cannot determine image filename for '%s'", pname.c_str());
 
             auto flash = [&](const std::string &partition) {
+                if (should_flash_in_userspace(partition) && !is_userspace_fastboot() &&
+                    !force_flash) {
+                    die("The partition you are trying to flash is dynamic, and "
+                        "should be flashed via fastbootd. Please run:\n"
+                        "\n"
+                        "    fastboot reboot fastboot\n"
+                        "\n"
+                        "And try again. If you are intentionally trying to "
+                        "overwrite a fixed partition, use --force.");
+                }
                 do_flash(partition.c_str(), fname.c_str());
             };
             do_for_partitions(pname.c_str(), slot_override, flash, true);
@@ -1852,6 +1947,15 @@ int FastBootTool::Main(int argc, char* argv[]) {
             std::string partition = next_arg(&args);
             std::string size = next_arg(&args);
             fb->ResizePartition(partition, size);
+        } else if (command == "gsi") {
+            std::string arg = next_arg(&args);
+            if (arg == "wipe") {
+                fb->RawCommand("gsi:wipe", "wiping GSI");
+            } else if (arg == "disable") {
+                fb->RawCommand("gsi:disable", "disabling GSI");
+            } else {
+                syntax_error("expected 'wipe' or 'disable'");
+            }
         } else {
             syntax_error("unknown command %s", command.c_str());
         }
@@ -1889,8 +1993,7 @@ int FastBootTool::Main(int argc, char* argv[]) {
         fb->RebootTo("recovery");
         fb->WaitForDisconnect();
     } else if (wants_reboot_fastboot) {
-        fb->RebootTo("fastboot");
-        fb->WaitForDisconnect();
+        reboot_to_userspace_fastboot();
     }
 
     fprintf(stderr, "Finished. Total time: %.3fs\n", (now() - start));

@@ -203,7 +203,8 @@ bool DeviceMapper::GetAvailableTargets(std::vector<DmTargetTypeInfo>* targets) {
         }
         next += vers->next;
         data_size -= vers->next;
-        vers = reinterpret_cast<struct dm_target_versions*>(static_cast<char*>(buffer.get()) + next);
+        vers = reinterpret_cast<struct dm_target_versions*>(static_cast<char*>(buffer.get()) +
+                                                            next);
     }
 
     return true;
@@ -288,23 +289,35 @@ bool DeviceMapper::GetDmDevicePathByName(const std::string& name, std::string* p
 }
 
 bool DeviceMapper::GetTableStatus(const std::string& name, std::vector<TargetInfo>* table) {
-    char buffer[4096];
-    struct dm_ioctl* io = reinterpret_cast<struct dm_ioctl*>(buffer);
+    return GetTable(name, 0, table);
+}
 
-    InitIo(io, name);
-    io->data_size = sizeof(buffer);
-    io->data_start = sizeof(*io);
-    if (ioctl(fd_, DM_TABLE_STATUS, io) < 0) {
-        PLOG(ERROR) << "DM_TABLE_STATUS failed for " << name;
-        return false;
-    }
-    if (io->flags & DM_BUFFER_FULL_FLAG) {
-        PLOG(ERROR) << "DM_TABLE_STATUS result for " << name << " was too large";
-        return false;
+bool DeviceMapper::GetTableInfo(const std::string& name, std::vector<TargetInfo>* table) {
+    return GetTable(name, DM_STATUS_TABLE_FLAG, table);
+}
+
+// private methods of DeviceMapper
+bool DeviceMapper::GetTable(const std::string& name, uint32_t flags,
+                            std::vector<TargetInfo>* table) {
+    std::vector<char> buffer;
+    struct dm_ioctl* io = nullptr;
+
+    for (buffer.resize(4096);; buffer.resize(buffer.size() * 2)) {
+        io = reinterpret_cast<struct dm_ioctl*>(&buffer[0]);
+
+        InitIo(io, name);
+        io->data_size = buffer.size();
+        io->data_start = sizeof(*io);
+        io->flags = flags;
+        if (ioctl(fd_, DM_TABLE_STATUS, io) < 0) {
+            PLOG(ERROR) << "DM_TABLE_STATUS failed for " << name;
+            return false;
+        }
+        if (!(io->flags & DM_BUFFER_FULL_FLAG)) break;
     }
 
     uint32_t cursor = io->data_start;
-    uint32_t data_end = std::min(io->data_size, uint32_t(sizeof(buffer)));
+    uint32_t data_end = std::min(io->data_size, uint32_t(buffer.size()));
     for (uint32_t i = 0; i < io->target_count; i++) {
         if (cursor + sizeof(struct dm_target_spec) > data_end) {
             break;
@@ -312,14 +325,14 @@ bool DeviceMapper::GetTableStatus(const std::string& name, std::vector<TargetInf
         // After each dm_target_spec is a status string. spec->next is an
         // offset from |io->data_start|, and we clamp it to the size of our
         // buffer.
-        struct dm_target_spec* spec = reinterpret_cast<struct dm_target_spec*>(buffer + cursor);
+        struct dm_target_spec* spec = reinterpret_cast<struct dm_target_spec*>(&buffer[cursor]);
         uint32_t data_offset = cursor + sizeof(dm_target_spec);
         uint32_t next_cursor = std::min(io->data_start + spec->next, data_end);
 
         std::string data;
         if (next_cursor > data_offset) {
             // Note: we use c_str() to eliminate any extra trailing 0s.
-            data = std::string(buffer + data_offset, next_cursor - data_offset).c_str();
+            data = std::string(&buffer[data_offset], next_cursor - data_offset).c_str();
         }
         table->emplace_back(*spec, data);
         cursor = next_cursor;
@@ -327,7 +340,6 @@ bool DeviceMapper::GetTableStatus(const std::string& name, std::vector<TargetInf
     return true;
 }
 
-// private methods of DeviceMapper
 void DeviceMapper::InitIo(struct dm_ioctl* io, const std::string& name) const {
     CHECK(io != nullptr) << "nullptr passed to dm_ioctl initialization";
     memset(io, 0, sizeof(*io));
@@ -338,7 +350,7 @@ void DeviceMapper::InitIo(struct dm_ioctl* io, const std::string& name) const {
     io->data_size = sizeof(*io);
     io->data_start = 0;
     if (!name.empty()) {
-        strlcpy(io->name, name.c_str(), sizeof(io->name));
+        snprintf(io->name, sizeof(io->name), "%s", name.c_str());
     }
 }
 

@@ -22,6 +22,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 
 #include "liblp.h"
@@ -79,6 +80,8 @@ class ZeroExtent final : public Extent {
 };
 
 class PartitionGroup final {
+    friend class MetadataBuilder;
+
   public:
     explicit PartitionGroup(const std::string& name, uint64_t maximum_size)
         : name_(name), maximum_size_(maximum_size) {}
@@ -87,6 +90,8 @@ class PartitionGroup final {
     uint64_t maximum_size() const { return maximum_size_; }
 
   private:
+    void set_maximum_size(uint64_t maximum_size) { maximum_size_ = maximum_size; }
+
     std::string name_;
     uint64_t maximum_size_;
 };
@@ -115,6 +120,7 @@ class Partition final {
 
   private:
     void ShrinkTo(uint64_t aligned_size);
+    void set_group_name(const std::string& group_name) { group_name_ = group_name; }
 
     std::string name_;
     std::string group_name_;
@@ -186,6 +192,9 @@ class MetadataBuilder {
         return New(device_info, metadata_max_size, metadata_slot_count);
     }
 
+    // Used by the test harness to override whether the device is "A/B".
+    static void OverrideABForTesting(bool ab_device);
+
     // Define a new partition group. By default there is one group called
     // "default", with an unrestricted size. A non-zero size will restrict the
     // total space used by all partitions in the group.
@@ -215,6 +224,10 @@ class MetadataBuilder {
     // Find a group by name. If no group is found, nullptr is returned.
     PartitionGroup* FindGroup(const std::string& name);
 
+    // Add a predetermined extent to a partition.
+    bool AddLinearExtent(Partition* partition, const std::string& block_device,
+                         uint64_t num_sectors, uint64_t physical_sector);
+
     // Grow or shrink a partition to the requested size. This size will be
     // rounded UP to the nearest block (512 bytes).
     //
@@ -226,6 +239,21 @@ class MetadataBuilder {
     // Note, this is an in-memory operation, and it does not alter the
     // underlying filesystem or contents of the partition on disk.
     bool ResizePartition(Partition* partition, uint64_t requested_size);
+
+    // Return the list of partitions belonging to a group.
+    std::vector<Partition*> ListPartitionsInGroup(const std::string& group_name);
+
+    // Changes a partition's group. Size constraints will not be checked until
+    // the metadata is exported, to avoid errors during potential group and
+    // size shuffling operations. This will return false if the new group does
+    // not exist.
+    bool ChangePartitionGroup(Partition* partition, const std::string& group_name);
+
+    // Changes the size of a partition group. Size constraints will not be
+    // checked until metadata is exported, to avoid errors during group
+    // reshuffling. This will return false if the group does not exist, or if
+    // the group name is "default".
+    bool ChangeGroupSize(const std::string& group_name, uint64_t maximum_size);
 
     // Amount of space that can be allocated to logical partitions.
     uint64_t AllocatableSpace() const;
@@ -239,6 +267,9 @@ class MetadataBuilder {
 
     // Set the LP_METADATA_AUTO_SLOT_SUFFIXING flag.
     void SetAutoSlotSuffixing();
+
+    // If set, checks for slot suffixes will be ignored internally.
+    void IgnoreSlotSuffixing();
 
     bool GetBlockDeviceInfo(const std::string& partition_name, BlockDeviceInfo* info) const;
     bool UpdateBlockDeviceInfo(const std::string& partition_name, const BlockDeviceInfo& info);
@@ -270,6 +301,9 @@ class MetadataBuilder {
     void ImportExtents(Partition* dest, const LpMetadata& metadata,
                        const LpMetadataPartition& source);
     bool ImportPartition(const LpMetadata& metadata, const LpMetadataPartition& source);
+    bool IsABDevice() const;
+    bool IsRetrofitDevice() const;
+    bool ValidatePartitionGroups() const;
 
     struct Interval {
         uint32_t device_index;
@@ -289,6 +323,10 @@ class MetadataBuilder {
     std::vector<Interval> GetFreeRegions() const;
     void ExtentsToFreeList(const std::vector<Interval>& extents,
                            std::vector<Interval>* free_regions) const;
+    std::vector<Interval> PrioritizeSecondHalfOfSuper(const std::vector<Interval>& free_list);
+
+    static bool sABOverrideValue;
+    static bool sABOverrideSet;
 
     LpMetadataGeometry geometry_;
     LpMetadataHeader header_;
@@ -296,6 +334,7 @@ class MetadataBuilder {
     std::vector<std::unique_ptr<PartitionGroup>> groups_;
     std::vector<LpMetadataBlockDevice> block_devices_;
     bool auto_slot_suffixing_;
+    bool ignore_slot_suffixing_;
 };
 
 // Read BlockDeviceInfo for a given block device. This always returns false

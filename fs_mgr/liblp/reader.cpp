@@ -256,6 +256,10 @@ static std::unique_ptr<LpMetadata> ParseMetadata(const LpMetadataGeometry& geome
             LERROR << "Logical partition has invalid attribute set.";
             return nullptr;
         }
+        if (partition.first_extent_index + partition.num_extents < partition.first_extent_index) {
+            LERROR << "Logical partition first_extent_index + num_extents overflowed.";
+            return nullptr;
+        }
         if (partition.first_extent_index + partition.num_extents > header.extents.num_entries) {
             LERROR << "Logical partition has invalid extent list.";
             return nullptr;
@@ -374,6 +378,17 @@ bool AdjustMetadataForSlot(LpMetadata* metadata, uint32_t slot_number) {
             return false;
         }
         block_device.flags &= ~LP_BLOCK_DEVICE_SLOT_SUFFIXED;
+    }
+    for (auto& group : metadata->groups) {
+        if (!(group.flags & LP_GROUP_SLOT_SUFFIXED)) {
+            continue;
+        }
+        std::string group_name = GetPartitionGroupName(group) + slot_suffix;
+        if (!UpdatePartitionGroupName(&group, group_name)) {
+            LERROR << __PRETTY_FUNCTION__ << " group name too long: " << group_name;
+            return false;
+        }
+        group.flags &= ~LP_GROUP_SLOT_SUFFIXED;
     }
     return true;
 }

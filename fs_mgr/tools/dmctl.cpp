@@ -27,6 +27,7 @@
 #include <android-base/unique_fd.h>
 #include <libdm/dm.h>
 
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <ios>
@@ -35,6 +36,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+using namespace std::literals::string_literals;
 
 using DeviceMapper = ::android::dm::DeviceMapper;
 using DmTable = ::android::dm::DmTable;
@@ -48,13 +51,16 @@ using DmBlockDevice = ::android::dm::DeviceMapper::DmBlockDevice;
 
 static int Usage(void) {
     std::cerr << "usage: dmctl <command> [command options]" << std::endl;
+    std::cerr << "       dmctl -f file" << std::endl;
     std::cerr << "commands:" << std::endl;
     std::cerr << "  create <dm-name> [-ro] <targets...>" << std::endl;
     std::cerr << "  delete <dm-name>" << std::endl;
-    std::cerr << "  list <devices | targets>" << std::endl;
+    std::cerr << "  list <devices | targets> [-v]" << std::endl;
     std::cerr << "  getpath <dm-name>" << std::endl;
     std::cerr << "  table <dm-name>" << std::endl;
     std::cerr << "  help" << std::endl;
+    std::cerr << std::endl;
+    std::cerr << "-f file reads command and all parameters from named file" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Target syntax:" << std::endl;
     std::cerr << "  <target_type> <start_sector> <num_sectors> [target_data]" << std::endl;
@@ -197,7 +203,8 @@ static int DmDeleteCmdHandler(int argc, char** argv) {
     return 0;
 }
 
-static int DmListTargets(DeviceMapper& dm) {
+static int DmListTargets(DeviceMapper& dm, [[maybe_unused]] int argc,
+                         [[maybe_unused]] char** argv) {
     std::vector<DmTargetTypeInfo> targets;
     if (!dm.GetAvailableTargets(&targets)) {
         std::cerr << "Failed to read available device mapper targets" << std::endl;
@@ -218,7 +225,7 @@ static int DmListTargets(DeviceMapper& dm) {
     return 0;
 }
 
-static int DmListDevices(DeviceMapper& dm) {
+static int DmListDevices(DeviceMapper& dm, int argc, char** argv) {
     std::vector<DmBlockDevice> devices;
     if (!dm.GetAvailableDevices(&devices)) {
         std::cerr << "Failed to read available device mapper devices" << std::endl;
@@ -230,15 +237,37 @@ static int DmListDevices(DeviceMapper& dm) {
         return 0;
     }
 
+    bool verbose = (argc && (argv[0] == "-v"s));
     for (const auto& dev : devices) {
         std::cout << std::left << std::setw(20) << dev.name() << " : " << dev.Major() << ":"
                   << dev.Minor() << std::endl;
+        if (verbose) {
+            std::vector<DeviceMapper::TargetInfo> table;
+            if (!dm.GetTableInfo(dev.name(), &table)) {
+                std::cerr << "Could not query table status for device \"" << dev.name() << "\"."
+                          << std::endl;
+                return -EINVAL;
+            }
+
+            uint32_t target_num = 1;
+            for (const auto& target : table) {
+                std::cout << "  target#" << target_num << ": ";
+                std::cout << target.spec.sector_start << "-"
+                          << (target.spec.sector_start + target.spec.length) << ": "
+                          << target.spec.target_type;
+                if (!target.data.empty()) {
+                    std::cout << ", " << target.data;
+                }
+                std::cout << std::endl;
+                target_num++;
+            }
+        }
     }
 
     return 0;
 }
 
-static const std::map<std::string, std::function<int(DeviceMapper&)>> listmap = {
+static const std::map<std::string, std::function<int(DeviceMapper&, int, char**)>> listmap = {
         {"targets", DmListTargets},
         {"devices", DmListDevices},
 };
@@ -251,7 +280,7 @@ static int DmListCmdHandler(int argc, char** argv) {
 
     DeviceMapper& dm = DeviceMapper::Instance();
     for (const auto& l : listmap) {
-        if (l.first == argv[0]) return l.second(dm);
+        if (l.first == argv[0]) return l.second(dm, argc - 1, argv + 1);
     }
 
     std::cerr << "Invalid argument to \'dmctl list\': " << argv[0] << std::endl;
@@ -315,10 +344,38 @@ static std::map<std::string, std::function<int(int, char**)>> cmdmap = {
         // clang-format on
 };
 
+static bool ReadFile(const char* filename, std::vector<std::string>* args,
+                     std::vector<char*>* arg_ptrs) {
+    std::ifstream file(filename);
+    if (!file) return false;
+
+    std::string arg;
+    while (file >> arg) args->push_back(arg);
+
+    for (auto const& i : *args) arg_ptrs->push_back(const_cast<char*>(i.c_str()));
+    return true;
+}
+
 int main(int argc, char** argv) {
     android::base::InitLogging(argv, &android::base::StderrLogger);
     if (argc < 2) {
         return Usage();
+    }
+
+    std::vector<std::string> args;
+    std::vector<char*> arg_ptrs;
+    if (std::string("-f") == argv[1]) {
+        if (argc != 3) {
+            return Usage();
+        }
+
+        args.push_back(argv[0]);
+        if (!ReadFile(argv[2], &args, &arg_ptrs)) {
+            return Usage();
+        }
+
+        argc = arg_ptrs.size();
+        argv = &arg_ptrs[0];
     }
 
     for (const auto& cmd : cmdmap) {

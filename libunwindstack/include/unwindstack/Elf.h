@@ -72,6 +72,8 @@ class Elf {
 
   ElfInterface* CreateInterfaceFromMemory(Memory* memory);
 
+  std::string GetBuildID();
+
   uint64_t GetLoadBias() { return load_bias_; }
 
   bool IsValidPc(uint64_t pc);
@@ -99,6 +101,8 @@ class Elf {
   static bool GetInfo(Memory* memory, uint64_t* size);
 
   static uint64_t GetLoadBias(Memory* memory);
+
+  static std::string GetBuildID(Memory* memory);
 
   static void SetCachingEnabled(bool enable);
   static bool CachingEnabled() { return cache_enabled_; }

@@ -43,6 +43,7 @@
 #include <keyutils.h>
 #include <libavb/libavb.h>
 #include <private/android_filesystem_config.h>
+#include <processgroup/processgroup.h>
 #include <selinux/android.h>
 
 #ifndef RECOVERY
@@ -50,22 +51,19 @@
 #endif
 
 #include "action_parser.h"
+#include "boringssl_self_test.h"
 #include "epoll.h"
 #include "first_stage_mount.h"
 #include "import_parser.h"
 #include "keychords.h"
+#include "mount_namespace.h"
 #include "property_service.h"
 #include "reboot.h"
 #include "reboot_utils.h"
 #include "security.h"
 #include "selinux.h"
 #include "sigchld_handler.h"
-#include "ueventd.h"
 #include "util.h"
-
-#if __has_feature(address_sanitizer)
-#include <sanitizer/asan_interface.h>
-#endif
 
 using namespace std::chrono_literals;
 using namespace std::string_literals;
@@ -79,25 +77,6 @@ using android::base::Trim;
 
 namespace android {
 namespace init {
-
-#if __has_feature(address_sanitizer)
-// Load asan.options if it exists since these are not yet in the environment.
-// Always ensure detect_container_overflow=0 as there are false positives with this check.
-// Always ensure abort_on_error=1 to ensure we reboot to bootloader for development builds.
-extern "C" const char* __asan_default_options() {
-    return "include_if_exists=/system/asan.options:detect_container_overflow=0:abort_on_error=1";
-}
-
-__attribute__((no_sanitize("address", "memory", "thread", "undefined"))) extern "C" void
-__sanitizer_report_error_summary(const char* summary) {
-    LOG(ERROR) << "Main stage (error summary): " << summary;
-}
-
-__attribute__((no_sanitize("address", "memory", "thread", "undefined"))) static void
-AsanReportCallback(const char* str) {
-    LOG(ERROR) << "Main stage: " << str;
-}
-#endif
 
 static int property_triggers_enabled = 0;
 
@@ -374,6 +353,17 @@ static Result<Success> console_init_action(const BuiltinArguments& args) {
     return Success();
 }
 
+static Result<Success> SetupCgroupsAction(const BuiltinArguments&) {
+    // Have to create <CGROUPS_RC_DIR> using make_dir function
+    // for appropriate sepolicy to be set for it
+    make_dir(CGROUPS_RC_DIR, 0711);
+    if (!CgroupSetupCgroups()) {
+        return ErrnoError() << "Failed to setup cgroups";
+    }
+
+    return Success();
+}
+
 static void import_kernel_nv(const std::string& key, const std::string& value, bool for_emulator) {
     if (key.empty()) return;
 
@@ -479,6 +469,8 @@ static Result<Success> InitBinder(const BuiltinArguments& args) {
     // Also, binder can't be used by recovery.
 #ifndef RECOVERY
     android::ProcessState::self()->setThreadPoolMaxThreadCount(0);
+    android::ProcessState::self()->setCallRestriction(
+            ProcessState::CallRestriction::ERROR_IF_NOT_ONEWAY);
 #endif
     return Success();
 }
@@ -627,55 +619,9 @@ static void GlobalSeccomp() {
     });
 }
 
-static void SetupSelinux(char** argv) {
-    android::base::InitLogging(argv, &android::base::KernelLogger, [](const char*) {
-        RebootSystem(ANDROID_RB_RESTART2, "bootloader");
-    });
-
-    // Set up SELinux, loading the SELinux policy.
-    SelinuxSetupKernelLogging();
-    SelinuxInitialize();
-
-    // We're in the kernel domain and want to transition to the init domain.  File systems that
-    // store SELabels in their xattrs, such as ext4 do not need an explicit restorecon here,
-    // but other file systems do.  In particular, this is needed for ramdisks such as the
-    // recovery image for A/B devices.
-    if (selinux_android_restorecon("/system/bin/init", 0) == -1) {
-        PLOG(FATAL) << "restorecon failed of /system/bin/init failed";
-    }
-
-    setenv("SELINUX_INITIALIZED", "true", 1);
-
-    const char* path = "/system/bin/init";
-    const char* args[] = {path, nullptr};
-    execv(path, const_cast<char**>(args));
-
-    // execv() only returns if an error happened, in which case we
-    // panic and never return from this function.
-    PLOG(FATAL) << "execv(\"" << path << "\") failed";
-}
-
-int main(int argc, char** argv) {
-#if __has_feature(address_sanitizer)
-    __asan_set_error_report_callback(AsanReportCallback);
-#endif
-
-    if (!strcmp(basename(argv[0]), "ueventd")) {
-        return ueventd_main(argc, argv);
-    }
-
-    if (argc > 1 && !strcmp(argv[1], "subcontext")) {
-        android::base::InitLogging(argv, &android::base::KernelLogger);
-        const BuiltinFunctionMap function_map;
-        return SubcontextMain(argc, argv, &function_map);
-    }
-
+int SecondStageMain(int argc, char** argv) {
     if (REBOOT_BOOTLOADER_ON_PANIC) {
         InstallRebootSignalHandlers();
-    }
-
-    if (getenv("SELINUX_INITIALIZED") == nullptr) {
-        SetupSelinux(argv);
     }
 
     // We need to set up stdin/stdout/stderr again now that we're running in init's context.
@@ -727,7 +673,6 @@ int main(int argc, char** argv) {
     }
 
     // Clean up our environment.
-    unsetenv("SELINUX_INITIALIZED");
     unsetenv("INIT_STARTED_AT");
     unsetenv("INIT_SELINUX_TOOK");
     unsetenv("INIT_AVB_VERSION");
@@ -753,6 +698,10 @@ int main(int argc, char** argv) {
     const BuiltinFunctionMap function_map;
     Action::set_function_map(&function_map);
 
+    if (!SetupMountNamespaces()) {
+        PLOG(FATAL) << "SetupMountNamespaces failed";
+    }
+
     subcontexts = InitializeSubcontexts();
 
     ActionManager& am = ActionManager::GetInstance();
@@ -763,6 +712,8 @@ int main(int argc, char** argv) {
     // Turning this on and letting the INFO logging be discarded adds 0.2s to
     // Nexus 9 boot time, so it's disabled by default.
     if (false) DumpState();
+
+    am.QueueBuiltinAction(SetupCgroupsAction, "SetupCgroups");
 
     am.QueueEventTrigger("early-init");
 
@@ -786,6 +737,9 @@ int main(int argc, char** argv) {
 
     // Trigger all the boot actions to get us started.
     am.QueueEventTrigger("init");
+
+    // Starting the BoringSSL self test, for NIAP certification compliance.
+    am.QueueBuiltinAction(StartBoringSslSelfTest, "StartBoringSslSelfTest");
 
     // Repeat mix_hwrng_into_linux_rng in case /dev/hw_random or /dev/random
     // wasn't ready immediately after wait_for_coldboot_done

@@ -22,12 +22,40 @@
 #include <mutex>
 #include <string>
 
+#include <android-base/stringprintf.h>
+
 #include <unwindstack/Elf.h>
 #include <unwindstack/MapInfo.h>
 #include <unwindstack/Maps.h>
 #include <unwindstack/Memory.h>
 
 namespace unwindstack {
+
+bool MapInfo::InitFileMemoryFromPreviousReadOnlyMap(MemoryFileAtOffset* memory) {
+  // One last attempt, see if the previous map is read-only with the
+  // same name and stretches across this map.
+  if (prev_map == nullptr || prev_map->flags != PROT_READ) {
+    return false;
+  }
+
+  uint64_t map_size = end - prev_map->end;
+  if (!memory->Init(name, prev_map->offset, map_size)) {
+    return false;
+  }
+
+  uint64_t max_size;
+  if (!Elf::GetInfo(memory, &max_size) || max_size < map_size) {
+    return false;
+  }
+
+  if (!memory->Init(name, prev_map->offset, max_size)) {
+    return false;
+  }
+
+  elf_offset = offset - prev_map->offset;
+  elf_start_offset = prev_map->offset;
+  return true;
+}
 
 Memory* MapInfo::GetFileMemory() {
   std::unique_ptr<MemoryFileAtOffset> memory(new MemoryFileAtOffset);
@@ -38,8 +66,12 @@ Memory* MapInfo::GetFileMemory() {
     return nullptr;
   }
 
-  // There are two possibilities when the offset is non-zero.
-  // - There is an elf file embedded in a file.
+  // These are the possibilities when the offset is non-zero.
+  // - There is an elf file embedded in a file, and the offset is the
+  //   the start of the elf in the file.
+  // - There is an elf file embedded in a file, and the offset is the
+  //   the start of the executable part of the file. The actual start
+  //   of the elf is in the read-only segment preceeding this map.
   // - The whole file is an elf file, and the offset needs to be saved.
   //
   // Map in just the part of the file for the map. If this is not
@@ -53,27 +85,47 @@ Memory* MapInfo::GetFileMemory() {
     return nullptr;
   }
 
-  uint64_t max_size;
-  if (!Elf::GetInfo(memory.get(), &max_size)) {
-    // Init as if the whole file is an elf.
-    if (memory->Init(name, 0)) {
-      elf_offset = offset;
-      return memory.release();
+  // Check if the start of this map is an embedded elf.
+  uint64_t max_size = 0;
+  if (Elf::GetInfo(memory.get(), &max_size)) {
+    if (max_size > map_size) {
+      if (memory->Init(name, offset, max_size)) {
+        return memory.release();
+      }
+      // Try to reinit using the default map_size.
+      if (memory->Init(name, offset, map_size)) {
+        return memory.release();
+      }
+      return nullptr;
     }
-    return nullptr;
+    return memory.release();
   }
 
-  if (max_size > map_size) {
-    if (memory->Init(name, offset, max_size)) {
-      return memory.release();
+  // No elf at offset, try to init as if the whole file is an elf.
+  if (memory->Init(name, 0) && Elf::IsValidElf(memory.get())) {
+    elf_offset = offset;
+    // Need to check how to set the elf start offset. If this map is not
+    // the r-x map of a r-- map, then use the real offset value. Otherwise,
+    // use 0.
+    if (prev_map == nullptr || prev_map->offset != 0 || prev_map->flags != PROT_READ ||
+        prev_map->name != name) {
+      elf_start_offset = offset;
     }
-    // Try to reinit using the default map_size.
-    if (memory->Init(name, offset, map_size)) {
-      return memory.release();
-    }
-    return nullptr;
+    return memory.release();
   }
-  return memory.release();
+
+  // See if the map previous to this one contains a read-only map
+  // that represents the real start of the elf data.
+  if (InitFileMemoryFromPreviousReadOnlyMap(memory.get())) {
+    return memory.release();
+  }
+
+  // Failed to find elf at start of file or at read-only map, return
+  // file object from the current map.
+  if (memory->Init(name, offset, map_size)) {
+    return memory.release();
+  }
+  return nullptr;
 }
 
 Memory* MapInfo::CreateMemory(const std::shared_ptr<Memory>& process_memory) {
@@ -96,6 +148,10 @@ Memory* MapInfo::CreateMemory(const std::shared_ptr<Memory>& process_memory) {
     }
   }
 
+  if (process_memory == nullptr) {
+    return nullptr;
+  }
+
   // Need to verify that this elf is valid. It's possible that
   // only part of the elf file to be mapped into memory is in the executable
   // map. In this case, there will be another read-only map that includes the
@@ -106,37 +162,24 @@ Memory* MapInfo::CreateMemory(const std::shared_ptr<Memory>& process_memory) {
     return memory.release();
   }
 
-  if (name.empty() || maps_ == nullptr) {
-    return nullptr;
-  }
-
-  // Find the read-only map that has the same name and has an offset closest
-  // to the current offset but less than the offset of the current map.
-  // For shared libraries, there should be a r-x map that has a non-zero
-  // offset and then a r-- map that has a zero offset.
-  // For shared libraries loaded from an apk, there should be a r-x map that
-  // has a non-zero offset and then a r-- map that has a non-zero offset less
-  // than the offset from the r-x map.
-  uint64_t closest_offset = 0;
-  MapInfo* ro_map_info = nullptr;
-  for (auto map_info : *maps_) {
-    if (map_info->flags == PROT_READ && map_info->name == name && map_info->offset < offset &&
-        map_info->offset >= closest_offset) {
-      ro_map_info = map_info;
-      closest_offset = ro_map_info->offset;
-    }
-  }
-
-  if (ro_map_info == nullptr) {
+  // Find the read-only map by looking at the previous map. The linker
+  // doesn't guarantee that this invariant will always be true. However,
+  // if that changes, there is likely something else that will change and
+  // break something.
+  if (offset == 0 || name.empty() || prev_map == nullptr || prev_map->name != name ||
+      prev_map->offset >= offset) {
     return nullptr;
   }
 
   // Make sure that relative pc values are corrected properly.
-  elf_offset = offset - closest_offset;
+  elf_offset = offset - prev_map->offset;
+  // Use this as the elf start offset, otherwise, you always get offsets into
+  // the r-x section, which is not quite the right information.
+  elf_start_offset = prev_map->offset;
 
   MemoryRanges* ranges = new MemoryRanges;
-  ranges->Insert(new MemoryRange(process_memory, ro_map_info->start,
-                                 ro_map_info->end - ro_map_info->start, 0));
+  ranges->Insert(
+      new MemoryRange(process_memory, prev_map->start, prev_map->end - prev_map->start, 0));
   ranges->Insert(new MemoryRange(process_memory, start, end - start, elf_offset));
 
   return ranges;
@@ -184,6 +227,19 @@ Elf* MapInfo::GetElf(const std::shared_ptr<Memory>& process_memory, ArchEnum exp
   return elf.get();
 }
 
+bool MapInfo::GetFunctionName(uint64_t addr, std::string* name, uint64_t* func_offset) {
+  {
+    // Make sure no other thread is trying to update this elf object.
+    std::lock_guard<std::mutex> guard(mutex_);
+    if (elf == nullptr) {
+      return false;
+    }
+  }
+  // No longer need the lock, once the elf object is created, it is not deleted
+  // until this object is deleted.
+  return elf->GetFunctionName(addr, name, func_offset);
+}
+
 uint64_t MapInfo::GetLoadBias(const std::shared_ptr<Memory>& process_memory) {
   uint64_t cur_load_bias = load_bias.load();
   if (cur_load_bias != static_cast<uint64_t>(-1)) {
@@ -211,6 +267,63 @@ uint64_t MapInfo::GetLoadBias(const std::shared_ptr<Memory>& process_memory) {
   cur_load_bias = Elf::GetLoadBias(memory.get());
   load_bias = cur_load_bias;
   return cur_load_bias;
+}
+
+MapInfo::~MapInfo() {
+  uintptr_t id = build_id.load();
+  if (id != 0) {
+    delete reinterpret_cast<std::string*>(id);
+  }
+}
+
+std::string MapInfo::GetBuildID() {
+  uintptr_t id = build_id.load();
+  if (build_id != 0) {
+    return *reinterpret_cast<std::string*>(id);
+  }
+
+  // No need to lock, at worst if multiple threads do this at the same
+  // time it should be detected and only one thread should win and
+  // save the data.
+  std::unique_ptr<std::string> cur_build_id(new std::string);
+
+  // Now need to see if the elf object exists.
+  // Make sure no other thread is trying to add the elf to this map.
+  mutex_.lock();
+  Elf* elf_obj = elf.get();
+  mutex_.unlock();
+  if (elf_obj != nullptr) {
+    *cur_build_id = elf_obj->GetBuildID();
+  } else {
+    // This will only work if we can get the file associated with this memory.
+    // If this is only available in memory, then the section name information
+    // is not present and we will not be able to find the build id info.
+    std::unique_ptr<Memory> memory(GetFileMemory());
+    if (memory != nullptr) {
+      *cur_build_id = Elf::GetBuildID(memory.get());
+    }
+  }
+
+  id = reinterpret_cast<uintptr_t>(cur_build_id.get());
+  uintptr_t expected_id = 0;
+  if (build_id.compare_exchange_weak(expected_id, id)) {
+    // Value saved, so make sure the memory is not freed.
+    cur_build_id.release();
+  }
+  return *reinterpret_cast<std::string*>(id);
+}
+
+std::string MapInfo::GetPrintableBuildID() {
+  std::string raw_build_id = GetBuildID();
+  if (raw_build_id.empty()) {
+    return "";
+  }
+  std::string printable_build_id;
+  for (const char& c : raw_build_id) {
+    // Use %hhx to avoid sign extension on abis that have signed chars.
+    printable_build_id += android::base::StringPrintf("%02hhx", c);
+  }
+  return printable_build_id;
 }
 
 }  // namespace unwindstack

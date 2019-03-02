@@ -28,6 +28,8 @@
 #include <cutils/android_reboot.h>
 #include <ext4_utils/wipe.h>
 #include <fs_mgr.h>
+#include <fs_mgr/roots.h>
+#include <libgsi/libgsi.h>
 #include <liblp/builder.h>
 #include <liblp/liblp.h>
 #include <uuid/uuid.h>
@@ -322,27 +324,29 @@ bool RebootRecoveryHandler(FastbootDevice* device, const std::vector<std::string
 // partition table to the same place it was read.
 class PartitionBuilder {
   public:
-    explicit PartitionBuilder(FastbootDevice* device);
+    explicit PartitionBuilder(FastbootDevice* device, const std::string& partition_name);
 
     bool Write();
     bool Valid() const { return !!builder_; }
     MetadataBuilder* operator->() const { return builder_.get(); }
 
   private:
+    FastbootDevice* device_;
     std::string super_device_;
+    uint32_t slot_number_;
     std::unique_ptr<MetadataBuilder> builder_;
 };
 
-PartitionBuilder::PartitionBuilder(FastbootDevice* device) {
-    auto super_device = FindPhysicalPartition(fs_mgr_get_super_partition_name());
+PartitionBuilder::PartitionBuilder(FastbootDevice* device, const std::string& partition_name)
+    : device_(device) {
+    std::string slot_suffix = GetSuperSlotSuffix(device, partition_name);
+    slot_number_ = SlotNumberForSlotSuffix(slot_suffix);
+    auto super_device = FindPhysicalPartition(fs_mgr_get_super_partition_name(slot_number_));
     if (!super_device) {
         return;
     }
     super_device_ = *super_device;
-
-    std::string slot = device->GetCurrentSlot();
-    uint32_t slot_number = SlotNumberForSlotSuffix(slot);
-    builder_ = MetadataBuilder::New(super_device_, slot_number);
+    builder_ = MetadataBuilder::New(super_device_, slot_number_);
 }
 
 bool PartitionBuilder::Write() {
@@ -350,11 +354,7 @@ bool PartitionBuilder::Write() {
     if (!metadata) {
         return false;
     }
-    bool ok = true;
-    for (uint32_t i = 0; i < metadata->geometry.metadata_slot_count; i++) {
-        ok &= UpdatePartitionTable(super_device_, *metadata.get(), i);
-    }
-    return ok;
+    return UpdateAllPartitionMetadata(device_, super_device_, *metadata.get());
 }
 
 bool CreatePartitionHandler(FastbootDevice* device, const std::vector<std::string>& args) {
@@ -372,7 +372,7 @@ bool CreatePartitionHandler(FastbootDevice* device, const std::vector<std::strin
         return device->WriteFail("Invalid partition size");
     }
 
-    PartitionBuilder builder(device);
+    PartitionBuilder builder(device, partition_name);
     if (!builder.Valid()) {
         return device->WriteFail("Could not open super partition");
     }
@@ -404,11 +404,13 @@ bool DeletePartitionHandler(FastbootDevice* device, const std::vector<std::strin
         return device->WriteStatus(FastbootResult::FAIL, "Command not available on locked devices");
     }
 
-    PartitionBuilder builder(device);
+    std::string partition_name = args[1];
+
+    PartitionBuilder builder(device, partition_name);
     if (!builder.Valid()) {
         return device->WriteFail("Could not open super partition");
     }
-    builder->RemovePartition(args[1]);
+    builder->RemovePartition(partition_name);
     if (!builder.Write()) {
         return device->WriteFail("Failed to write partition table");
     }
@@ -430,7 +432,7 @@ bool ResizePartitionHandler(FastbootDevice* device, const std::vector<std::strin
         return device->WriteFail("Invalid partition size");
     }
 
-    PartitionBuilder builder(device);
+    PartitionBuilder builder(device, partition_name);
     if (!builder.Valid()) {
         return device->WriteFail("Could not open super partition");
     }
@@ -459,4 +461,66 @@ bool UpdateSuperHandler(FastbootDevice* device, const std::vector<std::string>& 
 
     bool wipe = (args.size() >= 3 && args[2] == "wipe");
     return UpdateSuper(device, args[1], wipe);
+}
+
+class AutoMountMetadata {
+  public:
+    AutoMountMetadata() {
+        Fstab proc_mounts;
+        if (!ReadFstabFromFile("/proc/mounts", &proc_mounts)) {
+            LOG(ERROR) << "Could not read /proc/mounts";
+            return;
+        }
+
+        auto iter = std::find_if(proc_mounts.begin(), proc_mounts.end(),
+                [](const auto& entry) { return entry.mount_point == "/metadata"; });
+        if (iter != proc_mounts.end()) {
+            mounted_ = true;
+            return;
+        }
+
+        if (!ReadDefaultFstab(&fstab_)) {
+            LOG(ERROR) << "Could not read default fstab";
+            return;
+        }
+        mounted_ = EnsurePathMounted(&fstab_, "/metadata");
+        should_unmount_ = true;
+    }
+    ~AutoMountMetadata() {
+        if (mounted_ && should_unmount_) {
+            EnsurePathUnmounted(&fstab_, "/metadata");
+        }
+    }
+    explicit operator bool() const { return mounted_; }
+
+  private:
+    Fstab fstab_;
+    bool mounted_ = false;
+    bool should_unmount_ = false;
+};
+
+bool GsiHandler(FastbootDevice* device, const std::vector<std::string>& args) {
+    if (args.size() != 2) {
+        return device->WriteFail("Invalid arguments");
+    }
+
+    AutoMountMetadata mount_metadata;
+    if (!mount_metadata) {
+        return device->WriteFail("Could not find GSI install");
+    }
+
+    if (!android::gsi::IsGsiInstalled()) {
+        return device->WriteStatus(FastbootResult::FAIL, "No GSI is installed");
+    }
+
+    if (args[1] == "wipe") {
+        if (!android::gsi::UninstallGsi()) {
+            return device->WriteStatus(FastbootResult::FAIL, strerror(errno));
+        }
+    } else if (args[1] == "disable") {
+        if (!android::gsi::DisableGsi()) {
+            return device->WriteStatus(FastbootResult::FAIL, strerror(errno));
+        }
+    }
+    return device->WriteStatus(FastbootResult::OKAY, "Success");
 }

@@ -59,6 +59,8 @@ test_libraries = [
     "libcutils",
     "liblog",
     "libbase",
+    "libjsoncpp",
+    "libprocessgroup",
 ]
 
 cc_test {

@@ -54,6 +54,7 @@
 #include <fs_mgr.h>
 #include <fscrypt/fscrypt.h>
 #include <fscrypt/fscrypt_init_extensions.h>
+#include <libgsi/libgsi.h>
 #include <selinux/android.h>
 #include <selinux/label.h>
 #include <selinux/selinux.h>
@@ -62,6 +63,7 @@
 #include "action_manager.h"
 #include "bootchart.h"
 #include "init.h"
+#include "mount_namespace.h"
 #include "parser.h"
 #include "property_service.h"
 #include "reboot.h"
@@ -74,6 +76,8 @@
 using namespace std::literals::string_literals;
 
 using android::base::unique_fd;
+using android::fs_mgr::Fstab;
+using android::fs_mgr::ReadFstabFromFile;
 
 #define chmod DO_NOT_USE_CHMOD_USE_FCHMODAT_SYMLINK_NOFOLLOW
 
@@ -100,6 +104,9 @@ static void ForEachServiceInClass(const std::string& classname, F function) {
 }
 
 static Result<Success> do_class_start(const BuiltinArguments& args) {
+    // Do not start a class if it has a property persist.dont_start_class.CLASS set to 1.
+    if (android::base::GetBoolProperty("persist.init.dont_start_class." + args[1], false))
+        return Success();
     // Starting a class does not start services which are explicitly disabled.
     // They must  be started individually.
     for (const auto& service : ServiceList::GetInstance()) {
@@ -124,6 +131,9 @@ static Result<Success> do_class_reset(const BuiltinArguments& args) {
 }
 
 static Result<Success> do_class_restart(const BuiltinArguments& args) {
+    // Do not restart a class if it has a property persist.dont_start_class.CLASS set to 1.
+    if (android::base::GetBoolProperty("persist.init.dont_start_class." + args[1], false))
+        return Success();
     ForEachServiceInClass(args[1], &Service::Restart);
     return Success();
 }
@@ -473,9 +483,10 @@ static Result<int> mount_fstab(const char* fstabfile, int mount_mode) {
         // Only needed if someone explicitly changes the default log level in their init.rc.
         android::base::ScopedLogSeverity info(android::base::INFO);
 
-        struct fstab* fstab = fs_mgr_read_fstab(fstabfile);
-        int child_ret = fs_mgr_mount_all(fstab, mount_mode);
-        fs_mgr_free_fstab(fstab);
+        Fstab fstab;
+        ReadFstabFromFile(fstabfile, &fstab);
+
+        int child_ret = fs_mgr_mount_all(&fstab, mount_mode);
         if (child_ret == -1) {
             PLOG(ERROR) << "fs_mgr_mount_all returned an error";
         }
@@ -513,8 +524,18 @@ static Result<Success> queue_fs_event(int code) {
         return Success();
     } else if (code == FS_MGR_MNTALL_DEV_NEEDS_RECOVERY) {
         /* Setup a wipe via recovery, and reboot into recovery */
+        if (android::gsi::IsGsiRunning()) {
+            return Error() << "cannot wipe within GSI";
+        }
         PLOG(ERROR) << "fs_mgr_mount_all suggested recovery, so wiping data via recovery.";
         const std::vector<std::string> options = {"--wipe_data", "--reason=fs_mgr_mount_all" };
+        return reboot_into_recovery(options);
+    } else if (code == FS_MGR_MNTALL_DEV_NEEDS_RECOVERY_WIPE_PROMPT) {
+        /* Setup a wipe via recovery with prompt, and reboot into recovery if chosen */
+        PLOG(ERROR) << "fs_mgr_mount_all suggested recovery, so wiping data via recovery "
+                       "with prompt.";
+        const std::vector<std::string> options = {"--prompt_and_wipe_data",
+             "--reason=fs_mgr_mount_all" };
         return reboot_into_recovery(options);
         /* If reboot worked, there is no return. */
     } else if (code == FS_MGR_MNTALL_DEV_FILE_ENCRYPTED) {
@@ -612,14 +633,15 @@ static Result<Success> do_mount_all(const BuiltinArguments& args) {
 }
 
 static Result<Success> do_swapon_all(const BuiltinArguments& args) {
-    struct fstab *fstab;
-    int ret;
+    Fstab fstab;
+    if (!ReadFstabFromFile(args[1], &fstab)) {
+        return Error() << "Could not read fstab '" << args[1] << "'";
+    }
 
-    fstab = fs_mgr_read_fstab(args[1].c_str());
-    ret = fs_mgr_swapon_all(fstab);
-    fs_mgr_free_fstab(fstab);
+    if (!fs_mgr_swapon_all(fstab)) {
+        return Error() << "fs_mgr_swapon_all() failed";
+    }
 
-    if (ret != 0) return Error() << "fs_mgr_swapon_all() failed";
     return Success();
 }
 
@@ -733,13 +755,10 @@ static Result<Success> do_verity_load_state(const BuiltinArguments& args) {
     return Success();
 }
 
-static void verity_update_property(fstab_rec *fstab, const char *mount_point,
-                                   int mode, int status) {
-    property_set("partition."s + mount_point + ".verified", std::to_string(mode));
-}
-
 static Result<Success> do_verity_update_state(const BuiltinArguments& args) {
-    if (!fs_mgr_update_verity_state(verity_update_property)) {
+    if (!fs_mgr_update_verity_state([](const std::string& mount_point, int mode) {
+            property_set("partition." + mount_point + ".verified", std::to_string(mode));
+        })) {
         return Error() << "fs_mgr_update_verity_state() failed";
     }
     return Success();
@@ -967,7 +986,7 @@ static Result<Success> do_load_persist_props(const BuiltinArguments& args) {
 }
 
 static Result<Success> do_load_system_props(const BuiltinArguments& args) {
-    load_system_props();
+    LOG(INFO) << "deprecated action `load_system_props` called.";
     return Success();
 }
 
@@ -1017,7 +1036,8 @@ static Result<Success> ExecWithRebootOnFailure(const std::string& reboot_reason,
     }
     service->AddReapCallback([reboot_reason](const siginfo_t& siginfo) {
         if (siginfo.si_code != CLD_EXITED || siginfo.si_status != 0) {
-            if (fscrypt_is_native()) {
+            // TODO (b/122850122): support this in gsi
+            if (fscrypt_is_native() && !android::gsi::IsGsiRunning()) {
                 LOG(ERROR) << "Rebooting into recovery, reason: " << reboot_reason;
                 if (auto result = reboot_into_recovery(
                             {"--prompt_and_wipe_data", "--reason="s + reboot_reason});
@@ -1088,6 +1108,14 @@ static Result<Success> do_parse_apex_configs(const BuiltinArguments& args) {
     }
 }
 
+static Result<Success> do_setup_runtime_bionic(const BuiltinArguments& args) {
+    if (SwitchToDefaultMountNamespace()) {
+        return Success();
+    } else {
+        return Error() << "Failed to setup runtime bionic";
+    }
+}
+
 // Builtin-function-map start
 const BuiltinFunctionMap::Map& BuiltinFunctionMap::map() const {
     constexpr std::size_t kMax = std::numeric_limits<std::size_t>::max();
@@ -1135,6 +1163,7 @@ const BuiltinFunctionMap::Map& BuiltinFunctionMap::map() const {
         {"rmdir",                   {1,     1,    {true,   do_rmdir}}},
         {"setprop",                 {2,     2,    {true,   do_setprop}}},
         {"setrlimit",               {3,     3,    {false,  do_setrlimit}}},
+        {"setup_runtime_bionic",    {0,     0,    {false,  do_setup_runtime_bionic}}},
         {"start",                   {1,     1,    {false,  do_start}}},
         {"stop",                    {1,     1,    {false,  do_stop}}},
         {"swapon_all",              {1,     1,    {false,  do_swapon_all}}},

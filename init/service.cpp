@@ -50,6 +50,7 @@
 #include <sys/system_properties.h>
 
 #include "init.h"
+#include "mount_namespace.h"
 #include "property_service.h"
 #include "selinux.h"
 #else
@@ -205,6 +206,11 @@ static bool ExpandArgsAndExecv(const std::vector<std::string>& args, bool sigsto
     }
 
     return execv(c_strings[0], c_strings.data()) == 0;
+}
+
+static bool IsRuntimeApexReady() {
+    struct stat buf;
+    return stat("/apex/com.android.runtime/", &buf) == 0;
 }
 
 unsigned long Service::next_start_order_ = 1;
@@ -367,12 +373,19 @@ void Service::Reap(const siginfo_t& siginfo) {
         return;
     }
 
-    // If we crash > 4 times in 4 minutes, reboot into bootloader.
+    // If we crash > 4 times in 4 minutes, reboot into bootloader or set crashing property
     boot_clock::time_point now = boot_clock::now();
-    if ((flags_ & SVC_CRITICAL) && !(flags_ & SVC_RESTART)) {
+    if (((flags_ & SVC_CRITICAL) || classnames_.count("updatable")) && !(flags_ & SVC_RESTART)) {
         if (now < time_crashed_ + 4min) {
             if (++crash_count_ > 4) {
-                LOG(FATAL) << "critical process '" << name_ << "' exited 4 times in 4 minutes";
+                if (flags_ & SVC_CRITICAL) {
+                    // Aborts into bootloader
+                    LOG(FATAL) << "critical process '" << name_ << "' exited 4 times in 4 minutes";
+                } else {
+                    LOG(ERROR) << "updatable process '" << name_ << "' exited 4 times in 4 minutes";
+                    // Notifies update_verifier and apexd
+                    property_set("ro.init.updatable_crashing", "1");
+                }
             }
         } else {
             time_crashed_ = now;
@@ -922,6 +935,14 @@ Result<Success> Service::Start() {
         scon = *result;
     }
 
+    if (!IsRuntimeApexReady() && !pre_apexd_) {
+        // If this service is started before the runtime APEX gets available,
+        // mark it as pre-apexd one. Note that this marking is permanent. So
+        // for example, if the service is re-launched (e.g., due to crash),
+        // it is still recognized as pre-apexd... for consistency.
+        pre_apexd_ = true;
+    }
+
     LOG(INFO) << "starting service '" << name_ << "'...";
 
     pid_t pid = -1;
@@ -937,6 +958,15 @@ Result<Success> Service::Start() {
         if (auto result = EnterNamespaces(); !result) {
             LOG(FATAL) << "Service '" << name_ << "' could not enter namespaces: " << result.error();
         }
+
+#if defined(__ANDROID__)
+        if (pre_apexd_) {
+            if (!SwitchToBootstrapMountNamespaceIfNeeded()) {
+                LOG(FATAL) << "Service '" << name_ << "' could not enter "
+                           << "into the bootstrap mount namespace";
+            }
+        }
+#endif
 
         if (namespace_flags_ & CLONE_NEWNS) {
             if (auto result = SetUpMountNamespace(); !result) {
@@ -961,27 +991,33 @@ Result<Success> Service::Start() {
         std::for_each(descriptors_.begin(), descriptors_.end(),
                       std::bind(&DescriptorInfo::CreateAndPublish, std::placeholders::_1, scon));
 
-        // See if there were "writepid" instructions to write to files under /dev/cpuset/.
-        auto cpuset_predicate = [](const std::string& path) {
-            return StartsWith(path, "/dev/cpuset/");
-        };
-        auto iter = std::find_if(writepid_files_.begin(), writepid_files_.end(), cpuset_predicate);
-        if (iter == writepid_files_.end()) {
-            // There were no "writepid" instructions for cpusets, check if the system default
-            // cpuset is specified to be used for the process.
-            std::string default_cpuset = GetProperty("ro.cpuset.default", "");
-            if (!default_cpuset.empty()) {
-                // Make sure the cpuset name starts and ends with '/'.
-                // A single '/' means the 'root' cpuset.
-                if (default_cpuset.front() != '/') {
-                    default_cpuset.insert(0, 1, '/');
+        // See if there were "writepid" instructions to write to files under cpuset path.
+        std::string cpuset_path;
+        if (CgroupGetControllerPath("cpuset", &cpuset_path)) {
+            auto cpuset_predicate = [&cpuset_path](const std::string& path) {
+                return StartsWith(path, cpuset_path + "/");
+            };
+            auto iter =
+                    std::find_if(writepid_files_.begin(), writepid_files_.end(), cpuset_predicate);
+            if (iter == writepid_files_.end()) {
+                // There were no "writepid" instructions for cpusets, check if the system default
+                // cpuset is specified to be used for the process.
+                std::string default_cpuset = GetProperty("ro.cpuset.default", "");
+                if (!default_cpuset.empty()) {
+                    // Make sure the cpuset name starts and ends with '/'.
+                    // A single '/' means the 'root' cpuset.
+                    if (default_cpuset.front() != '/') {
+                        default_cpuset.insert(0, 1, '/');
+                    }
+                    if (default_cpuset.back() != '/') {
+                        default_cpuset.push_back('/');
+                    }
+                    writepid_files_.push_back(
+                            StringPrintf("%s%stasks", cpuset_path.c_str(), default_cpuset.c_str()));
                 }
-                if (default_cpuset.back() != '/') {
-                    default_cpuset.push_back('/');
-                }
-                writepid_files_.push_back(
-                    StringPrintf("/dev/cpuset%stasks", default_cpuset.c_str()));
             }
+        } else {
+            LOG(ERROR) << "cpuset cgroup controller is not mounted!";
         }
         std::string pid_str = std::to_string(getpid());
         for (const auto& file : writepid_files_) {

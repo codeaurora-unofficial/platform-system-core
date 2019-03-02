@@ -111,7 +111,7 @@ static inline bool hasMetadata(char* str, int str_len) {
 }
 
 std::map<std::string, std::string> LogAudit::populateDenialMap() {
-    std::ifstream bug_file("/system/etc/selinux/selinux_denial_metadata");
+    std::ifstream bug_file("/vendor/etc/selinux/selinux_denial_metadata");
     std::string line;
     // allocate a map for the static map pointer in auditParse to keep track of,
     // this function only runs once
@@ -165,9 +165,14 @@ void LogAudit::auditParse(const std::string& string, uid_t uid,
         bug_num->assign("");
     }
 
+    // Ensure the uid name is not null before passing it to the bug string.
     if (uid >= AID_APP_START && uid <= AID_APP_END) {
-        bug_num->append(" app=");
-        bug_num->append(android::uidToName(uid));
+        char* uidname = android::uidToName(uid);
+        if (uidname) {
+            bug_num->append(" app=");
+            bug_num->append(uidname);
+            free(uidname);
+        }
     }
 }
 
@@ -295,7 +300,7 @@ int LogAudit::logPrint(const char* fmt, ...) {
         return 0;
     }
 
-    log_time now;
+    log_time now(log_time::EPOCH);
 
     static const char audit_str[] = " audit(";
     char* timeptr = strstr(str, audit_str);

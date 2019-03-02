@@ -40,7 +40,7 @@ class DexFiles : public Global {
  public:
   explicit DexFiles(std::shared_ptr<Memory>& memory);
   DexFiles(std::shared_ptr<Memory>& memory, std::vector<std::string>& search_libs);
-  ~DexFiles();
+  virtual ~DexFiles();
 
   DexFile* GetDexFile(uint64_t dex_file_offset, MapInfo* info);
 
@@ -66,7 +66,7 @@ class DexFiles : public Global {
 
   std::mutex lock_;
   bool initialized_ = false;
-  std::unordered_map<uint64_t, DexFile*> files_;
+  std::unordered_map<uint64_t, std::unique_ptr<DexFile>> files_;
 
   uint64_t entry_addr_ = 0;
   uint64_t (DexFiles::*read_entry_ptr_func_)(uint64_t) = nullptr;
