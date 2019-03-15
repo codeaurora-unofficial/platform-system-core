@@ -766,6 +766,32 @@ case "$target" in
         echo N > /sys/module/lpm_levels/parameters/sleep_disabled
 
         echo 100 > /proc/sys/vm/swappiness
+
+        #Emulate Block Device for VM System
+        if [ -d  /sys/vservices/server-sessions/microvisor:server.linux_mlvm ]; then
+            set +e
+            vm_system_partition="$(grep -o "vm_system=/dev/[0-9a-z]*" /proc/cmdline)"
+            vm_system_partition="${vm_system_partition/vm_system=\/dev\//}"
+            if [ -z "$vm_system_partition" ]; then
+                vm_system_partition=mmcblk0p14
+                echo "VM system use default $vm_system_partition"
+            fi
+            echo $vm_system_partition > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/core:0/create_service
+            echo com.ok-labs.block > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/${vm_system_partition}:1/protocol
+            echo 1 > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/${vm_system_partition}:1/start
+            vm_ret=$?
+            vm_retry_count=0
+            while [ $vm_ret != 0 ]; do
+                echo 1 > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/${vm_system_partition}:1/start
+                vm_ret=$?
+                ((vm_retry_count++))
+                if [ $vm_retry_count == 20 ]; then
+                    echo "VM system start taking long, skip it..."
+                    break
+                fi
+            done
+            set -e
+        fi
     ;;
 esac
 
