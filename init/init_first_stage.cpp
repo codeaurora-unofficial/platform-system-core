@@ -227,6 +227,19 @@ ListenerAction FirstStageMount::UeventCallback(const Uevent& uevent) {
                 return ListenerAction::kContinue;
             }
         }
+    } else if (!uevent.device_name.empty()) {
+        // Matches device name to create device nodes.
+        auto iter = required_devices_partition_names_.find(uevent.device_name);
+        if (iter != required_devices_partition_names_.end()) {
+            LOG(INFO) << __FUNCTION__ << "(): found device: " << *iter;
+            required_devices_partition_names_.erase(iter);
+            device_handler_.HandleDeviceEvent(uevent);
+            if (required_devices_partition_names_.empty()) {
+                return ListenerAction::kStop;
+            } else {
+                return ListenerAction::kContinue;
+            }
+        }
     }
     // Not found a partition or find an unneeded partition, continue to find others.
     return ListenerAction::kContinue;
