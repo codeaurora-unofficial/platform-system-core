@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 # Copyright (c) 2009-2011, 2016 The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -779,6 +779,7 @@ case "$target" in
             echo $vm_system_partition > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/core:0/create_service
             echo com.ok-labs.block > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/${vm_system_partition}:1/protocol
             echo 1 > /sys/vservices/server-sessions/microvisor:server.linux_mlvm/${vm_system_partition}:1/start
+            declare -i vm_retry_count
             vm_ret=$?
             vm_retry_count=0
             while [ $vm_ret != 0 ]; do
