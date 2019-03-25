@@ -46,24 +46,31 @@ int set_cpuset_policy(int tid, SchedPolicy policy) {
 
     switch (policy) {
         case SP_BACKGROUND:
-            return SetTaskProfiles(tid,
-                                   {"HighEnergySaving", "ProcessCapacityLow", "TimerSlackHigh"})
+            return SetTaskProfiles(tid, {"HighEnergySaving", "ProcessCapacityLow", "LowIoPriority",
+                                         "TimerSlackHigh", "BlkIOBackground"})
                            ? 0
                            : -1;
         case SP_FOREGROUND:
+            return SetTaskProfiles(tid, {"HighPerformance", "ProcessCapacityHigh",
+                                         "TimerSlackNormal", "BlkIOForeground"})
+                           ? 0
+                           : -1;
         case SP_AUDIO_APP:
         case SP_AUDIO_SYS:
-            return SetTaskProfiles(tid,
-                                   {"HighPerformance", "ProcessCapacityHigh", "TimerSlackNormal"})
+            return SetTaskProfiles(tid, {"HighPerformance", "ProcessCapacityHigh", "HighIoPriority",
+                                         "TimerSlackNormal", "BlkIOBackground"})
                            ? 0
                            : -1;
         case SP_TOP_APP:
-            return SetTaskProfiles(tid,
-                                   {"MaxPerformance", "ProcessCapacityMax", "TimerSlackNormal"})
+            return SetTaskProfiles(tid, {"MaxPerformance", "ProcessCapacityMax", "MaxIoPriority",
+                                         "TimerSlackNormal", "BlkIOBackground"})
                            ? 0
                            : -1;
         case SP_SYSTEM:
-            return SetTaskProfiles(tid, {"ServiceCapacityLow", "TimerSlackNormal"}) ? 0 : -1;
+            return SetTaskProfiles(tid,
+                                   {"ServiceCapacityLow", "TimerSlackNormal", "BlkIOForeground"})
+                           ? 0
+                           : -1;
         case SP_RESTRICTED:
             return SetTaskProfiles(tid, {"ServiceCapacityRestricted", "TimerSlackNormal"}) ? 0 : -1;
         default:
@@ -110,7 +117,7 @@ int set_sched_policy(int tid, SchedPolicy policy) {
         case SP_AUDIO_APP:
         case SP_AUDIO_SYS:
         case SP_TOP_APP:
-            SLOGD("^^^ tid %d (%s)", tid, thread_name);
+            SLOGD("^^^ tid %d policy %d (%s)", tid, policy, thread_name);
             break;
         case SP_SYSTEM:
             SLOGD("/// tid %d (%s)", tid, thread_name);
@@ -126,15 +133,27 @@ int set_sched_policy(int tid, SchedPolicy policy) {
 
     switch (policy) {
         case SP_BACKGROUND:
-            return SetTaskProfiles(tid, {"HighEnergySaving", "TimerSlackHigh"}) ? 0 : -1;
+            return SetTaskProfiles(tid, {"HighEnergySaving", "LowIoPriority", "TimerSlackHigh", "BlkIOBackground"})
+                           ? 0
+                           : -1;
         case SP_FOREGROUND:
+            return SetTaskProfiles(tid, {"HighPerformance", "TimerSlackNormal", "BlkIOForeground"})
+                           ? 0
+                           : -1;
         case SP_AUDIO_APP:
         case SP_AUDIO_SYS:
-            return SetTaskProfiles(tid, {"HighPerformance", "TimerSlackNormal"}) ? 0 : -1;
+            return SetTaskProfiles(tid, {"HighPerformance", "HighIoPriority", "TimerSlackNormal", "BlkIOBackground"})
+                           ? 0
+                           : -1;
         case SP_TOP_APP:
-            return SetTaskProfiles(tid, {"MaxPerformance", "TimerSlackNormal"}) ? 0 : -1;
+            return SetTaskProfiles(tid, {"MaxPerformance", "MaxIoPriority", "TimerSlackNormal", "BlkIOBackground"})
+                           ? 0
+                           : -1;
         case SP_RT_APP:
-            return SetTaskProfiles(tid, {"RealtimePerformance", "TimerSlackNormal"}) ? 0 : -1;
+            return SetTaskProfiles(tid,
+                                   {"RealtimePerformance", "MaxIoPriority", "TimerSlackNormal", "BlkIOBackground"})
+                           ? 0
+                           : -1;
         default:
             return SetTaskProfiles(tid, {"TimerSlackNormal"}) ? 0 : -1;
     }

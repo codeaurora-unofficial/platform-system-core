@@ -42,6 +42,7 @@
 #include <fs_mgr_vendor_overlay.h>
 #include <keyutils.h>
 #include <libavb/libavb.h>
+#include <libgsi/libgsi.h>
 #include <private/android_filesystem_config.h>
 #include <processgroup/processgroup.h>
 #include <selinux/android.h>
@@ -193,7 +194,8 @@ void property_changed(const std::string& name, const std::string& value) {
 
     if (waiting_for_prop) {
         if (wait_prop_name == name && wait_prop_value == value) {
-            LOG(INFO) << "Wait for property took " << *waiting_for_prop;
+            LOG(INFO) << "Wait for property '" << wait_prop_name << "=" << wait_prop_value
+                      << "' took " << *waiting_for_prop;
             ResetWaitForProp();
         }
     }
@@ -712,6 +714,13 @@ int SecondStageMain(int argc, char** argv) {
     // Turning this on and letting the INFO logging be discarded adds 0.2s to
     // Nexus 9 boot time, so it's disabled by default.
     if (false) DumpState();
+
+    // Make the GSI status available before scripts start running.
+    if (android::gsi::IsGsiRunning()) {
+        property_set("ro.gsid.image_running", "1");
+    } else {
+        property_set("ro.gsid.image_running", "0");
+    }
 
     am.QueueBuiltinAction(SetupCgroupsAction, "SetupCgroups");
 
