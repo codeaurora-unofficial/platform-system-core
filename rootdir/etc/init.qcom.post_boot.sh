@@ -476,10 +476,14 @@ case "$target" in
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
                 #VOICEUI module will take care of putting system in suspend mode.
                 #echo mem > /sys/power/autosleep
-
-                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
-                enable_qcs40x_debug
-                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
+                echo mem > /sys/power/autosleep
+                echo 1 > /sys/module/process_reclaim/parameters/enable_process_reclaim
+                echo 10 > /sys/module/process_reclaim/parameters/pressure_min
+                echo 70 > /sys/module/process_reclaim/parameters/pressure_max
+                echo 30 > /sys/module/process_reclaim/parameters/swap_opt_eff
+                echo 512 > /sys/module/process_reclaim/parameters/per_swap_size
+                echo 1 > /proc/sys/vm/swap_ratio_enable
+                echo 100 > /proc/sys/vm/swappiness
                 ;;
                 *)
                 ;;
