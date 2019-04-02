@@ -773,6 +773,7 @@ struct fstab *fs_mgr_read_fstab_dt()
  * fstab.<hardware>, fstab.<hardware.platform> in folders
    /odm/etc, vendor/etc, or /.
  */
+#if 0
 static std::string get_fstab_path()
 {
     for (const char* prop : {"hardware", "hardware.platform"}) {
@@ -790,7 +791,7 @@ static std::string get_fstab_path()
 
     return std::string();
 }
-
+#endif
 /*
  * loads the fstab file and combines with fstab entries passed in from device tree.
  */
@@ -802,7 +803,8 @@ struct fstab *fs_mgr_read_fstab_default()
     if (access("/sbin/recovery", F_OK) == 0) {
         default_fstab = "/etc/recovery.fstab";
     } else {  // normal boot
-        default_fstab = get_fstab_path();
+//      default_fstab = get_fstab_path();
+        default_fstab = "/vendor/etc/fstab.qcom";
     }
 
     struct fstab* fstab = nullptr;
