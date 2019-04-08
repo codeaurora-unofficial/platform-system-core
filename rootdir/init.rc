@@ -13,6 +13,7 @@ import /init.${ro.zygote}.rc
 
 on early-init
     # Set init and its forked children's oom_adj.
+    write /proc/sys/vm/overcommit_memory 1
     write /proc/1/oom_score_adj -1000
 
     # Disable sysrq from keyboard
@@ -565,7 +566,6 @@ on boot
     # Memory management.  Basic kernel parameters, and allow the high
     # level system server to be able to adjust the kernel OOM driver
     # parameters to match how it is managing things.
-    write /proc/sys/vm/overcommit_memory 1
     write /proc/sys/vm/min_free_order_shift 4
     chown root system /sys/module/lowmemorykiller/parameters/adj
     chmod 0664 /sys/module/lowmemorykiller/parameters/adj
