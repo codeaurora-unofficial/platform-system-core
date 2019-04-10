@@ -274,6 +274,20 @@ bool FirstStageMount::MountPartitions() {
             return false;
         }
     }
+
+    // workaround to mount system when there is no system node in dts-fstab
+    // and android does not support system as rootfs
+    // need to comment this code in final release
+    if (device_tree_fstab_->num_entries == 1) {
+        struct fstab_rec fstab_rec = *mount_fstab_recs_[0];
+        fstab_rec.blk_device = (char *)"/dev/block/platform/soc/7824900.sdhci/by-name/system";
+        fstab_rec.mount_point = (char *)"/system";
+
+        if (fs_mgr_do_mount_one(&fstab_rec)) {
+            PLOG(ERROR) << "Failed to mount '" << fstab_rec.mount_point << "'";
+            return false;
+        }
+    }
     return true;
 }
 
