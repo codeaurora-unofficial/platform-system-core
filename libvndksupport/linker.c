@@ -42,6 +42,7 @@ static struct android_namespace_t* get_vendor_namespace() {
             name_idx++;
         }
     }
+    vendor_namespace  = NULL;
     return vendor_namespace;
 }
 

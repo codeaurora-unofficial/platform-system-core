@@ -463,9 +463,9 @@ static Result<Success> InitBinder(const BuiltinArguments& args) {
     //   - retrieving data that is necessary to boot
     // Also, binder can't be used by recovery.
 #ifndef RECOVERY
-    android::ProcessState::self()->setThreadPoolMaxThreadCount(0);
-    android::ProcessState::self()->setCallRestriction(
-            ProcessState::CallRestriction::ERROR_IF_NOT_ONEWAY);
+    //android::ProcessState::self()->setThreadPoolMaxThreadCount(0);
+    //android::ProcessState::self()->setCallRestriction(
+    //        ProcessState::CallRestriction::ERROR_IF_NOT_ONEWAY);
 #endif
     return Success();
 }
