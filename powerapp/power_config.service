@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Linux Foundation. All rights reserved.
+# Copyright (c) 2019, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -26,17 +26,13 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 
 [Unit]
-SourcePath=/etc/initscripts/usb
-Description=usb Service
-After=systemrw.mount leprop.service
-Requires=systemrw-adb_devid.service systemrw-boot_hsusb_comp.service
-RequiresMountsFor=/systemrw
+Description=Setting the power config
+SourcePath=/etc/initscripts/power_config
 
 [Service]
-Type=oneshot
-Environment="adbd_params=0 y"
-RemainAfterExit=yes
-ExecStart= /bin/sh -c '/etc/initscripts/usb start'
+Restart=yes
+ExecStart=/etc/initscripts/power_config start
+ExecStop=/etc/initscripts/power_config stop
 
 [Install]
 WantedBy=multi-user.target

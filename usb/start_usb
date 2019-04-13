@@ -73,6 +73,7 @@ case "$1" in
 		mkdir functions/mass_storage.1
 		mkdir functions/ffs.adb
 		mkdir functions/diag.diag
+		mkdir functions/diag.diag_mdm
 		mkdir functions/cser.dun.0
 		mkdir functions/cser.nmea.1
 		mkdir functions/gser.0
@@ -85,6 +86,7 @@ case "$1" in
 		mkdir functions/gsi.gps
 		mkdir functions/ncm.0
 		mkdir functions/qdss.qdss
+		mkdir functions/qdss.qdss_mdm
 		mkdir functions/uac1.uac1
 		mkdir functions/uac2.0
 		mkdir functions/uvc.0
@@ -157,8 +159,19 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *sm8150* )
+		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* )
 			echo 901D > /etc/usb/boot_hsusb_comp
+		        ;;
+		*sm8150* )
+			echo 901D > /etc/usb/boot_hsusb_comp
+			if [ -f /sys/bus/platform/devices/a600000.ssusb/mode ]; then
+				default_mode=`cat /sys/bus/platform/devices/a600000.ssusb/mode`
+				case "$default_mode" in
+				    "none")
+					echo peripheral > /sys/bus/platform/devices/a600000.ssusb/mode
+				    ;;
+				esac
+			fi
 		        ;;
 	esac
 
@@ -256,8 +269,7 @@ case "$1" in
 		then
                     pid = "901D"
 		fi
-
-		/sbin/usb/compositions/$pid n 0 y
+		/sbin/usb/compositions/$pid n $adbd_params
 
 		if [ "$SOFTAP_W_DUN" == "Y" ]
 		then

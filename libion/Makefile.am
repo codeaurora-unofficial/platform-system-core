@@ -45,10 +45,7 @@ iontest_LDFLAGS := -llog
 
 # Export headers
 ion_includedir=$(includedir)/ion_headers/ion
-ion_linux_includedir=$(includedir)/ion_headers/linux
 ion_include_HEADERS := $(top_srcdir)/include/ion/ion.h
-ion_linux_include_HEADERS := $(top_srcdir)/kernel-headers/linux/ion.h
-ion_linux_include_HEADERS += $(top_srcdir)/kernel-headers/linux/ion_test.h
 
 pkgconfigdir := $(libdir)/pkgconfig
 pkgconfig_DATA := libion.pc

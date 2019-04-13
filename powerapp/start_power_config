@@ -157,7 +157,48 @@ case "$1" in
                 echo "compute" > /sys/class/devfreq/soc:qcom,cpubw/governor
                 echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
 
-		echo "++++ $0 -> FTRACE-Enable START" > /dev/kmsg
+		echo "++++ $0 -> ENABLE-FTRACE" > /dev/kmsg
+		#Enable FTRACE_ENABLE on SDX24
+		#bail out if its perf config
+		if [ ! -d /sys/module/msm_rtb ]
+		then
+			return
+		fi
+
+		#bail out if coresight isn't present
+		if [ ! -d /sys/bus/coresight ]
+		then
+			return
+		fi
+
+		#coresight
+		echo sg > /sys/bus/coresight/devices/coresight-tmc-etr/mem_type
+
+		echo 0 > /sys/kernel/debug/tracing/events/enable
+		echo mem > /sys/bus/coresight/devices/coresight-tmc-etr/out_mode
+		echo 1 > /sys/bus/coresight/devices/coresight-tmc-etr/enable_sink
+		echo 1 > /sys/bus/coresight/devices/coresight-stm/enable_source
+		echo 1 > /sys/kernel/debug/tracing/tracing_on
+
+		#SoftIRQs
+		echo 1 > /sys/kernel/debug/tracing/events/irq/enable
+		#echo 1 > /sys/kernel/debug/tracing/events/irq/filter
+		echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_entry/enable
+		echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_exit/enable
+		echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_raise/enable
+		#IRQs
+		echo 1 > /sys/kernel/debug/tracing/events/irq/enable
+		echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_entry/enable
+		echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_exit/enable
+		echo "++++ $0 -> END" > /dev/kmsg
+	        ;;
+	 esac
+
+         case "$soc_id" in
+         "352" | "373")
+                echo -n "Starting powerconfig for QCS405/QCS403: "
+
+		echo "++++ $0 -> ENABLE-FTRACE START" > /dev/kmsg
 		#Enable FTRACE_ENABLE on SDX24
 		#bail out if its perf config
 		if [ ! -d /sys/module/msm_rtb ]
@@ -193,11 +234,10 @@ case "$1" in
 		echo "++++ $0 -> FTRACE-Enable END" > /dev/kmsg
 
 		echo "++++ $0 -> DCC-Enable START" > /dev/kmsg
-
-		DCC_PATH="/sys/bus/platform/devices/10a2000.dcc_v2"
-
-		if [ ! -d $DCC_PATH ]; then
-		echo "DCC does not exist on this build."
+		DCC_PATH="/sys/bus/platform/devices/b2000.dcc_v2"
+		if [ ! -d $DCC_PATH ];
+		then
+			echo "DCC does not exist on this build."
 		        return
 		fi
 
@@ -207,12 +247,14 @@ case "$1" in
 		echo sram > $DCC_PATH/data_sink
 		echo 1 > $DCC_PATH/config_reset
 
-		echo 0x17840400 1 > $DCC_PATH/config  #APCS_RSCC_RSC_SEQ_OVERRIDE_START_ADDR_DRVd
-		echo 0x17840408 1 > $DCC_PATH/config  #APCS_RSCC_RSC_SEQ_PROGRAM_COUNTER_DRVd
-		echo 0x0B204520  1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_START_ADDR
-		echo 0x0B204524  1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_OVERRIDE_START_ADDR
-		echo 0x0B201024 1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_DBG_PROGRAM_COUNTER_DRVd
-		echo 0x0B21024  1 > $DCC_PATH/config  #RPMH_PDC_APPS_SEQ_DBG_PROGRAM_COUNTER_DRVd
+		#GCC_BIMC
+		echo 0x1823000 0x2 > $DCC_PATH/config
+		echo 0x1823010 0x1 > $DCC_PATH/config
+		echo 0x1823018 0x2 > $DCC_PATH/config
+		echo 0x1823024 0x1 > $DCC_PATH/config
+
+		#GCC_SYSTEM_NOC
+		echo 0x1826004 0x2 > $DCC_PATH/config
 
 		echo 1 > $DCC_PATH/enable
 		echo "++++ $0 -> DCC-Enable END" > /dev/kmsg
@@ -262,6 +304,15 @@ case "$1" in
                 echo "done";
                 ;;
          esac
+
+        case "$soc_id" in
+	"357" | "368")
+                echo -n "Starting powerconfig for SDX55: "
+                echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+		echo "done";
+		;;
+	esac
+
 
          case "$soc_id" in
          "116" | "142" | "154")
