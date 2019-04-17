@@ -69,6 +69,15 @@ bool ElfInterface::IsValidPc(uint64_t pc) {
   return false;
 }
 
+bool ElfInterface::GetTextRange(uint64_t* addr, uint64_t* size) {
+  if (text_size_ != 0) {
+    *addr = text_addr_;
+    *size = text_size_;
+    return true;
+  }
+  return false;
+}
+
 Memory* ElfInterface::CreateGnuDebugdataMemory() {
   if (gnu_debugdata_offset_ == 0 || gnu_debugdata_size_ == 0) {
     return nullptr;
@@ -330,29 +339,26 @@ void ElfInterface::ReadSectionHeaders(const EhdrType& ehdr) {
       }
       symbols_.push_back(new Symbols(shdr.sh_offset, shdr.sh_size, shdr.sh_entsize,
                                      str_shdr.sh_offset, str_shdr.sh_size));
-    } else if (shdr.sh_type == SHT_PROGBITS && sec_size != 0) {
+    } else if (shdr.sh_type == SHT_PROGBITS || shdr.sh_type == SHT_NOBITS) {
       // Look for the .debug_frame and .gnu_debugdata.
       if (shdr.sh_name < sec_size) {
         std::string name;
         if (memory_->ReadString(sec_offset + shdr.sh_name, &name)) {
-          uint64_t* offset_ptr = nullptr;
-          uint64_t* size_ptr = nullptr;
           if (name == ".debug_frame") {
-            offset_ptr = &debug_frame_offset_;
-            size_ptr = &debug_frame_size_;
+            debug_frame_offset_ = shdr.sh_offset;
+            debug_frame_size_ = shdr.sh_size;
           } else if (name == ".gnu_debugdata") {
-            offset_ptr = &gnu_debugdata_offset_;
-            size_ptr = &gnu_debugdata_size_;
+            gnu_debugdata_offset_ = shdr.sh_offset;
+            gnu_debugdata_size_ = shdr.sh_size;
           } else if (name == ".eh_frame") {
-            offset_ptr = &eh_frame_offset_;
-            size_ptr = &eh_frame_size_;
+            eh_frame_offset_ = shdr.sh_offset;
+            eh_frame_size_ = shdr.sh_size;
           } else if (eh_frame_hdr_offset_ == 0 && name == ".eh_frame_hdr") {
-            offset_ptr = &eh_frame_hdr_offset_;
-            size_ptr = &eh_frame_hdr_size_;
-          }
-          if (offset_ptr != nullptr) {
-            *offset_ptr = shdr.sh_offset;
-            *size_ptr = shdr.sh_size;
+            eh_frame_hdr_offset_ = shdr.sh_offset;
+            eh_frame_hdr_size_ = shdr.sh_size;
+          } else if (name == ".text") {
+            text_addr_ = shdr.sh_addr;
+            text_size_ = shdr.sh_size;
           }
         }
       }
@@ -374,13 +380,12 @@ void ElfInterface::ReadSectionHeaders(const EhdrType& ehdr) {
 }
 
 template <typename DynType>
-bool ElfInterface::GetSonameWithTemplate(std::string* soname) {
+std::string ElfInterface::GetSonameWithTemplate() {
   if (soname_type_ == SONAME_INVALID) {
-    return false;
+    return "";
   }
   if (soname_type_ == SONAME_VALID) {
-    *soname = soname_;
-    return true;
+    return soname_;
   }
 
   soname_type_ = SONAME_INVALID;
@@ -397,7 +402,7 @@ bool ElfInterface::GetSonameWithTemplate(std::string* soname) {
     if (!memory_->ReadFully(offset, &dyn, sizeof(dyn))) {
       last_error_.code = ERROR_MEMORY_INVALID;
       last_error_.address = offset;
-      return false;
+      return "";
     }
 
     if (dyn.d_tag == DT_STRTAB) {
@@ -416,17 +421,16 @@ bool ElfInterface::GetSonameWithTemplate(std::string* soname) {
     if (entry.first == strtab_addr) {
       soname_offset = entry.second + soname_offset;
       if (soname_offset >= entry.second + strtab_size) {
-        return false;
+        return "";
       }
       if (!memory_->ReadString(soname_offset, &soname_)) {
-        return false;
+        return "";
       }
       soname_type_ = SONAME_VALID;
-      *soname = soname_;
-      return true;
+      return soname_;
     }
   }
-  return false;
+  return "";
 }
 
 template <typename SymType>
@@ -653,8 +657,8 @@ template void ElfInterface::ReadSectionHeaders<Elf64_Ehdr, Elf64_Shdr>(const Elf
 template std::string ElfInterface::ReadBuildID<Elf32_Nhdr>();
 template std::string ElfInterface::ReadBuildID<Elf64_Nhdr>();
 
-template bool ElfInterface::GetSonameWithTemplate<Elf32_Dyn>(std::string*);
-template bool ElfInterface::GetSonameWithTemplate<Elf64_Dyn>(std::string*);
+template std::string ElfInterface::GetSonameWithTemplate<Elf32_Dyn>();
+template std::string ElfInterface::GetSonameWithTemplate<Elf64_Dyn>();
 
 template bool ElfInterface::GetFunctionNameWithTemplate<Elf32_Sym>(uint64_t, std::string*,
                                                                    uint64_t*);

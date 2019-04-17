@@ -308,6 +308,8 @@ void ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
             } else {
                 entry->logical_blk_size = val;
             }
+        } else if (StartsWith(flag, "avb_keys=")) {  // must before the following "avb"
+            entry->avb_keys = arg;
         } else if (StartsWith(flag, "avb")) {
             entry->fs_mgr_flags.avb = true;
             entry->vbmeta_partition = arg;
@@ -326,8 +328,6 @@ void ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
             }
         } else if (StartsWith(flag, "zram_backing_dev_path=")) {
             entry->zram_backing_dev_path = arg;
-        } else if (StartsWith(flag, "avb_keys=")) {
-            entry->avb_keys = arg;
         } else {
             LWARNING << "Warning: unknown flag: " << flag;
         }
@@ -767,6 +767,17 @@ FstabEntry BuildGsiSystemFstabEntry() {
     system.fs_mgr_flags.logical = true;
     system.fs_mgr_flags.first_stage_mount = true;
     return system;
+}
+
+std::string GetVerityDeviceName(const FstabEntry& entry) {
+    std::string base_device;
+    if (entry.mount_point == "/") {
+        // In AVB, the dm device name is vroot instead of system.
+        base_device = entry.fs_mgr_flags.avb ? "vroot" : "system";
+    } else {
+        base_device = android::base::Basename(entry.mount_point);
+    }
+    return base_device + "-verity";
 }
 
 }  // namespace fs_mgr

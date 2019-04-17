@@ -43,19 +43,12 @@ bool UnwindStackMap::Build() {
   // Create the process memory object.
   process_memory_ = unwindstack::Memory::CreateProcessMemory(pid_);
 
-  // Create a JitDebug object for getting jit unwind information.
-  std::vector<std::string> search_libs_{"libart.so", "libartd.so"};
-  jit_debug_.reset(new unwindstack::JitDebug(process_memory_, search_libs_));
-#if !defined(NO_LIBDEXFILE_SUPPORT)
-  dex_files_.reset(new unwindstack::DexFiles(process_memory_, search_libs_));
-#endif
-
   if (!stack_maps_->Parse()) {
     return false;
   }
 
   // Iterate through the maps and fill in the backtrace_map_t structure.
-  for (auto* map_info : *stack_maps_) {
+  for (const auto& map_info : *stack_maps_) {
     backtrace_map_t map;
     map.start = map_info->start;
     map.end = map_info->end;
