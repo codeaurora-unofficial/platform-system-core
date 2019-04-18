@@ -54,7 +54,8 @@ void LogBuffer::init() {
         property_get("ro.build.type", value, "user");
         if ((0 == strcmp(value, "userdebug") ||
             0 == strcmp(value, "eng")) &&
-            !(__android_logger_property_get_bool("ro.config.low_ram",BOOL_DEFAULT_FALSE))){
+            (__android_logger_property_get_bool("persist.vendor.logd.enlarge_buffer_size",BOOL_DEFAULT_FALSE) ||
+            !(__android_logger_property_get_bool("ro.config.low_ram",BOOL_DEFAULT_FALSE)))){
                 setSize(i, (4 * 1024 * 1024UL));
         } else if (setSize(i, __android_logger_get_buffer_size(i))) {
                setSize(i, LOG_BUFFER_MIN_SIZE);
