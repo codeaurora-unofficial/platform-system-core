@@ -30,9 +30,11 @@ SourcePath=/etc/launch_adbd
 Description=adbd Service
 Requires=usb.service
 After=usb.service
+DefaultDependencies=no
 
 [Service]
+Type=forking
 KillMode=process
 Restart=always
-ExecStart= /sbin/adbd
-ExecStartPost= /bin/sh -c '/etc/launch_adbd start'
+ExecStart=/etc/launch_adbd start
+Nice=-5
