@@ -85,6 +85,7 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(*(a)))
 
+using android::base::Basename;
 using android::base::Realpath;
 using android::base::StartsWith;
 using android::base::unique_fd;
@@ -306,7 +307,7 @@ static bool read_ext4_superblock(const std::string& blk_device, struct ext4_supe
         return false;
     }
 
-    if (pread(fd, sb, sizeof(*sb), 1024) != sizeof(*sb)) {
+    if (TEMP_FAILURE_RETRY(pread(fd, sb, sizeof(*sb), 1024)) != sizeof(*sb)) {
         PERROR << "Can't read '" << blk_device << "' superblock";
         return false;
     }
@@ -322,6 +323,17 @@ static bool read_ext4_superblock(const std::string& blk_device, struct ext4_supe
     if (sb->s_max_mnt_count == 0xffff) {  // -1 (int16) in ext2, but uint16 in ext4
         *fs_stat |= FS_STAT_NEW_IMAGE_VERSION;
     }
+    return true;
+}
+
+// exported silent version of the above that just answer the question is_ext4
+bool fs_mgr_is_ext4(const std::string& blk_device) {
+    android::base::ErrnoRestorer restore;
+    android::base::unique_fd fd(TEMP_FAILURE_RETRY(open(blk_device.c_str(), O_RDONLY | O_CLOEXEC)));
+    if (fd < 0) return false;
+    ext4_super_block sb;
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb, sizeof(sb), 1024)) != sizeof(sb)) return false;
+    if (!is_ext4_superblock_valid(&sb)) return false;
     return true;
 }
 
@@ -378,7 +390,7 @@ static void tune_quota(const std::string& blk_device, const FstabEntry& entry,
 // Set the number of reserved filesystem blocks if needed.
 static void tune_reserved_size(const std::string& blk_device, const FstabEntry& entry,
                                const struct ext4_super_block* sb, int* fs_stat) {
-    if (!entry.fs_mgr_flags.reserved_size) {
+    if (entry.reserved_size != 0) {
         return;
     }
 
@@ -493,11 +505,12 @@ static bool read_f2fs_superblock(const std::string& blk_device, int* fs_stat) {
         return false;
     }
 
-    if (pread(fd, &sb1, sizeof(sb1), F2FS_SUPER_OFFSET) != sizeof(sb1)) {
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb1, sizeof(sb1), F2FS_SUPER_OFFSET)) != sizeof(sb1)) {
         PERROR << "Can't read '" << blk_device << "' superblock1";
         return false;
     }
-    if (pread(fd, &sb2, sizeof(sb2), F2FS_BLKSIZE + F2FS_SUPER_OFFSET) != sizeof(sb2)) {
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb2, sizeof(sb2), F2FS_BLKSIZE + F2FS_SUPER_OFFSET)) !=
+        sizeof(sb2)) {
         PERROR << "Can't read '" << blk_device << "' superblock2";
         return false;
     }
@@ -508,6 +521,23 @@ static bool read_f2fs_superblock(const std::string& blk_device, int* fs_stat) {
         return false;
     }
     return true;
+}
+
+// exported silent version of the above that just answer the question is_f2fs
+bool fs_mgr_is_f2fs(const std::string& blk_device) {
+    android::base::ErrnoRestorer restore;
+    android::base::unique_fd fd(TEMP_FAILURE_RETRY(open(blk_device.c_str(), O_RDONLY | O_CLOEXEC)));
+    if (fd < 0) return false;
+    __le32 sb;
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb, sizeof(sb), F2FS_SUPER_OFFSET)) != sizeof(sb)) {
+        return false;
+    }
+    if (sb == cpu_to_le32(F2FS_SUPER_MAGIC)) return true;
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb, sizeof(sb), F2FS_BLKSIZE + F2FS_SUPER_OFFSET)) !=
+        sizeof(sb)) {
+        return false;
+    }
+    return sb == cpu_to_le32(F2FS_SUPER_MAGIC);
 }
 
 //
@@ -551,7 +581,7 @@ static int prepare_fs_for_mount(const std::string& blk_device, const FstabEntry&
     }
 
     if (is_extfs(entry.fs_type) &&
-        (entry.fs_mgr_flags.reserved_size || entry.fs_mgr_flags.file_encryption ||
+        (entry.reserved_size != 0 || entry.fs_mgr_flags.file_encryption ||
          entry.fs_mgr_flags.fs_verity)) {
         struct ext4_super_block sb;
 
@@ -806,7 +836,7 @@ static bool needs_block_encryption(const FstabEntry& entry) {
 }
 
 static bool should_use_metadata_encryption(const FstabEntry& entry) {
-    return entry.fs_mgr_flags.key_directory &&
+    return !entry.key_dir.empty() &&
            (entry.fs_mgr_flags.file_encryption || entry.fs_mgr_flags.force_fde_or_fbe);
 }
 
@@ -1088,7 +1118,7 @@ int fs_mgr_mount_all(Fstab* fstab, int mount_mode) {
                 // Skips mounting the device.
                 continue;
             }
-        } else if (!current_entry.avb_key.empty()) {
+        } else if (!current_entry.avb_keys.empty()) {
             if (AvbHandle::SetUpStandaloneAvbHashtree(&current_entry) == AvbHashtreeResult::kFail) {
                 LERROR << "Failed to set up AVB on standalone partition: "
                        << current_entry.mount_point << ", skipping!";
@@ -1097,9 +1127,7 @@ int fs_mgr_mount_all(Fstab* fstab, int mount_mode) {
             }
         } else if ((current_entry.fs_mgr_flags.verify)) {
             int rc = fs_mgr_setup_verity(&current_entry, true);
-            if (__android_log_is_debuggable() &&
-                    (rc == FS_MGR_SETUP_VERITY_DISABLED ||
-                     rc == FS_MGR_SETUP_VERITY_SKIPPED)) {
+            if (rc == FS_MGR_SETUP_VERITY_DISABLED || rc == FS_MGR_SETUP_VERITY_SKIPPED) {
                 LINFO << "Verity disabled";
             } else if (rc != FS_MGR_SETUP_VERITY_SUCCESS) {
                 LERROR << "Could not set up verified partition, skipping!";
@@ -1321,7 +1349,7 @@ static int fs_mgr_do_mount_helper(Fstab* fstab, const std::string& n_name,
                 // Skips mounting the device.
                 continue;
             }
-        } else if (!fstab_entry.avb_key.empty()) {
+        } else if (!fstab_entry.avb_keys.empty()) {
             if (AvbHandle::SetUpStandaloneAvbHashtree(&fstab_entry) == AvbHashtreeResult::kFail) {
                 LERROR << "Failed to set up AVB on standalone partition: "
                        << fstab_entry.mount_point << ", skipping!";
@@ -1330,9 +1358,7 @@ static int fs_mgr_do_mount_helper(Fstab* fstab, const std::string& n_name,
             }
         } else if (fstab_entry.fs_mgr_flags.verify) {
             int rc = fs_mgr_setup_verity(&fstab_entry, true);
-            if (__android_log_is_debuggable() &&
-                    (rc == FS_MGR_SETUP_VERITY_DISABLED ||
-                     rc == FS_MGR_SETUP_VERITY_SKIPPED)) {
+            if (rc == FS_MGR_SETUP_VERITY_DISABLED || rc == FS_MGR_SETUP_VERITY_SKIPPED) {
                 LINFO << "Verity disabled";
             } else if (rc != FS_MGR_SETUP_VERITY_SUCCESS) {
                 LERROR << "Could not set up verified partition, skipping!";
@@ -1372,18 +1398,6 @@ static int fs_mgr_do_mount_helper(Fstab* fstab, const std::string& n_name,
         LERROR << "Cannot find mount point " << n_name << " in fstab";
     }
     return FS_MGR_DOMNT_FAILED;
-}
-
-int fs_mgr_do_mount(fstab* fstab, const char* n_name, char* n_blk_device, char* tmp_mount_point) {
-    auto new_fstab = LegacyFstabToFstab(fstab);
-    return fs_mgr_do_mount_helper(&new_fstab, n_name, n_blk_device, tmp_mount_point, -1);
-}
-
-int fs_mgr_do_mount(fstab* fstab, const char* n_name, char* n_blk_device, char* tmp_mount_point,
-                    bool needs_checkpoint) {
-    auto new_fstab = LegacyFstabToFstab(fstab);
-    return fs_mgr_do_mount_helper(&new_fstab, n_name, n_blk_device, tmp_mount_point,
-                                  needs_checkpoint);
 }
 
 int fs_mgr_do_mount(Fstab* fstab, const char* n_name, char* n_blk_device, char* tmp_mount_point) {
@@ -1556,48 +1570,6 @@ bool fs_mgr_swapon_all(const Fstab& fstab) {
     return ret;
 }
 
-struct fstab_rec const* fs_mgr_get_crypt_entry(fstab const* fstab) {
-    int i;
-
-    if (!fstab) {
-        return NULL;
-    }
-
-    /* Look for the encryptable partition to find the data */
-    for (i = 0; i < fstab->num_entries; i++) {
-        /* Don't deal with vold managed enryptable partitions here */
-        if (!(fstab->recs[i].fs_mgr_flags & MF_VOLDMANAGED) &&
-            (fstab->recs[i].fs_mgr_flags &
-             (MF_CRYPT | MF_FORCECRYPT | MF_FORCEFDEORFBE | MF_FILEENCRYPTION))) {
-            return &fstab->recs[i];
-        }
-    }
-    return NULL;
-}
-
-/*
- * key_loc must be at least PROPERTY_VALUE_MAX bytes long
- *
- * real_blk_device must be at least PROPERTY_VALUE_MAX bytes long
- */
-void fs_mgr_get_crypt_info(fstab* fstab, char* key_loc, char* real_blk_device, size_t size) {
-    struct fstab_rec const* rec = fs_mgr_get_crypt_entry(fstab);
-    if (key_loc) {
-        if (rec) {
-            strlcpy(key_loc, rec->key_loc, size);
-        } else {
-            *key_loc = '\0';
-        }
-    }
-    if (real_blk_device) {
-        if (rec) {
-            strlcpy(real_blk_device, rec->blk_device, size);
-        } else {
-            *real_blk_device = '\0';
-        }
-    }
-}
-
 bool fs_mgr_load_verity_state(int* mode) {
     /* return the default mode, unless any of the verified partitions are in
      * logging mode, in which case return that */
@@ -1630,65 +1602,55 @@ bool fs_mgr_load_verity_state(int* mode) {
     return true;
 }
 
-bool fs_mgr_update_verity_state(
-        std::function<void(const std::string& mount_point, int mode)> callback) {
-    if (!callback) {
-        return false;
-    }
-
-    int mode;
-    if (!fs_mgr_load_verity_state(&mode)) {
-        return false;
-    }
-
-    Fstab fstab;
-    if (!ReadDefaultFstab(&fstab)) {
-        LERROR << "Failed to read default fstab";
+bool fs_mgr_is_verity_enabled(const FstabEntry& entry) {
+    if (!entry.fs_mgr_flags.verify && !entry.fs_mgr_flags.avb) {
         return false;
     }
 
     DeviceMapper& dm = DeviceMapper::Instance();
 
-    for (const auto& entry : fstab) {
-        if (!entry.fs_mgr_flags.verify && !entry.fs_mgr_flags.avb) {
-            continue;
-        }
-
-        std::string mount_point;
-        if (entry.mount_point == "/") {
-            // In AVB, the dm device name is vroot instead of system.
-            mount_point = entry.fs_mgr_flags.avb ? "vroot" : "system";
-        } else {
-            mount_point = basename(entry.mount_point.c_str());
-        }
-
-        if (dm.GetState(mount_point) == DmDeviceState::INVALID) {
-            PERROR << "Could not find verity device for mount point: " << mount_point;
-            continue;
-        }
-
-        const char* status;
-        std::vector<DeviceMapper::TargetInfo> table;
-        if (!dm.GetTableStatus(mount_point, &table) || table.empty() || table[0].data.empty()) {
-            if (!entry.fs_mgr_flags.verify_at_boot) {
-                PERROR << "Failed to query DM_TABLE_STATUS for " << mount_point;
-                continue;
-            }
-            status = "V";
-        } else {
-            status = table[0].data.c_str();
-        }
-
-        // To be consistent in vboot 1.0 and vboot 2.0 (AVB), change the mount_point
-        // back to 'system' for the callback. So it has property [partition.system.verified]
-        // instead of [partition.vroot.verified].
-        if (mount_point == "vroot") mount_point = "system";
-        if (*status == 'C' || *status == 'V') {
-            callback(mount_point, mode);
-        }
+    std::string mount_point = GetVerityDeviceName(entry);
+    if (dm.GetState(mount_point) == DmDeviceState::INVALID) {
+        return false;
     }
 
-    return true;
+    const char* status;
+    std::vector<DeviceMapper::TargetInfo> table;
+    if (!dm.GetTableStatus(mount_point, &table) || table.empty() || table[0].data.empty()) {
+        if (!entry.fs_mgr_flags.verify_at_boot) {
+            return false;
+        }
+        status = "V";
+    } else {
+        status = table[0].data.c_str();
+    }
+
+    if (*status == 'C' || *status == 'V') {
+        return true;
+    }
+
+    return false;
+}
+
+bool fs_mgr_verity_is_check_at_most_once(const android::fs_mgr::FstabEntry& entry) {
+    if (!entry.fs_mgr_flags.verify && !entry.fs_mgr_flags.avb) {
+        return false;
+    }
+
+    DeviceMapper& dm = DeviceMapper::Instance();
+    std::string device = GetVerityDeviceName(entry);
+
+    std::vector<DeviceMapper::TargetInfo> table;
+    if (dm.GetState(device) == DmDeviceState::INVALID || !dm.GetTableInfo(device, &table)) {
+        return false;
+    }
+    for (const auto& target : table) {
+        if (strcmp(target.spec.target_type, "verity") == 0 &&
+            target.data.find("check_at_most_once") != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string fs_mgr_get_super_partition_name(int slot) {

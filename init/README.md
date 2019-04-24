@@ -161,11 +161,13 @@ Options
 Options are modifiers to services.  They affect how and when init
 runs the service.
 
-`capabilities <capability> [ <capability>\* ]`
+`capabilities [ <capability>\* ]`
 > Set capabilities when exec'ing this service. 'capability' should be a Linux
   capability without the "CAP\_" prefix, like "NET\_ADMIN" or "SETPCAP". See
   http://man7.org/linux/man-pages/man7/capabilities.7.html for a list of Linux
   capabilities.
+  If no capabilities are provided, then all capabilities are removed from this service, even if it
+  runs as root.
 
 `class <name> [ <name>\* ]`
 > Specify class names for the service.  All services in a
@@ -274,10 +276,6 @@ runs the service.
   will use for this service. Pay close attention to the order in which init.rc files are parsed,
   since it has some peculiarities for backwards compatibility reasons. The 'imports' section of
   this file has more details on the order.
-
-`parse_apex_configs`
-  Parses config file(s) from the mounted APEXes. Intented to be used only once
-  when apexd notifies the mount event by setting apexd.status to ready.
 
 `priority <priority>`
 > Scheduling priority of the service process. This value has to be in range
@@ -510,6 +508,10 @@ Commands
   _options_ include "barrier=1", "noauto\_da\_alloc", "discard", ... as
   a comma separated string, eg: barrier=1,noauto\_da\_alloc
 
+`parse_apex_configs`
+> Parses config file(s) from the mounted APEXes. Intented to be used only once
+  when apexd notifies the mount event by setting apexd.status to ready.
+
 `restart <service>`
 > Stops and restarts a running service, does nothing if the service is currently
   restarting, otherwise, it just starts the service.
@@ -658,11 +660,18 @@ The below pseudocode may explain this more clearly:
 
 Properties
 ----------
-Init provides information about the services that it is responsible
-for via the below properties.
+Init provides state information with the following properties.
 
 `init.svc.<name>`
 > State of a named service ("stopped", "stopping", "running", "restarting")
+
+`dev.mnt.blk.<mount_point>`
+> Block device base name associated with a *mount_point*.
+  The *mount_point* has / replaced by . and if referencing the root mount point
+  "/", it will use "/root", specifically `dev.mnt.blk.root`.
+  Meant for references to `/sys/device/block/${dev.mnt.blk.<mount_point>}/` and
+  `/sys/fs/ext4/${dev.mnt.blk.<mount_point>}/` to tune the block device
+  characteristics in a device agnostic manner.
 
 
 Boot timing

@@ -59,7 +59,7 @@ class Elf {
 
   void Invalidate();
 
-  bool GetSoname(std::string* name);
+  std::string GetSoname();
 
   bool GetFunctionName(uint64_t addr, std::string* name, uint64_t* func_offset);
 
@@ -77,6 +77,8 @@ class Elf {
   uint64_t GetLoadBias() { return load_bias_; }
 
   bool IsValidPc(uint64_t pc);
+
+  bool GetTextRange(uint64_t* addr, uint64_t* size);
 
   void GetLastError(ErrorData* data);
   ErrorCode GetLastErrorCode();

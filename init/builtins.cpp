@@ -75,6 +75,7 @@
 
 using namespace std::literals::string_literals;
 
+using android::base::Basename;
 using android::base::unique_fd;
 using android::fs_mgr::Fstab;
 using android::fs_mgr::ReadFstabFromFile;
@@ -749,11 +750,27 @@ static Result<Success> do_verity_load_state(const BuiltinArguments& args) {
 }
 
 static Result<Success> do_verity_update_state(const BuiltinArguments& args) {
-    if (!fs_mgr_update_verity_state([](const std::string& mount_point, int mode) {
-            property_set("partition." + mount_point + ".verified", std::to_string(mode));
-        })) {
-        return Error() << "fs_mgr_update_verity_state() failed";
+    int mode;
+    if (!fs_mgr_load_verity_state(&mode)) {
+        return Error() << "fs_mgr_load_verity_state() failed";
     }
+
+    Fstab fstab;
+    if (!ReadDefaultFstab(&fstab)) {
+        return Error() << "Failed to read default fstab";
+    }
+
+    for (const auto& entry : fstab) {
+        if (!fs_mgr_is_verity_enabled(entry)) {
+            continue;
+        }
+
+        // To be consistent in vboot 1.0 and vboot 2.0 (AVB), use "system" for the partition even
+        // for system as root, so it has property [partition.system.verified].
+        std::string partition = entry.mount_point == "/" ? "system" : Basename(entry.mount_point);
+        property_set("partition." + partition + ".verified", std::to_string(mode));
+    }
+
     return Success();
 }
 
@@ -1101,11 +1118,11 @@ static Result<Success> do_parse_apex_configs(const BuiltinArguments& args) {
     }
 }
 
-static Result<Success> do_setup_runtime_bionic(const BuiltinArguments& args) {
+static Result<Success> do_enter_default_mount_ns(const BuiltinArguments& args) {
     if (SwitchToDefaultMountNamespace()) {
         return Success();
     } else {
-        return Error() << "Failed to setup runtime bionic";
+        return Error() << "Failed to enter into default mount namespace";
     }
 }
 
@@ -1156,10 +1173,10 @@ const BuiltinFunctionMap::Map& BuiltinFunctionMap::map() const {
         {"rmdir",                   {1,     1,    {true,   do_rmdir}}},
         {"setprop",                 {2,     2,    {true,   do_setprop}}},
         {"setrlimit",               {3,     3,    {false,  do_setrlimit}}},
-        {"setup_runtime_bionic",    {0,     0,    {false,  do_setup_runtime_bionic}}},
         {"start",                   {1,     1,    {false,  do_start}}},
         {"stop",                    {1,     1,    {false,  do_stop}}},
         {"swapon_all",              {1,     1,    {false,  do_swapon_all}}},
+        {"enter_default_mount_ns",  {0,     0,    {false,  do_enter_default_mount_ns}}},
         {"symlink",                 {2,     2,    {true,   do_symlink}}},
         {"sysclktz",                {1,     1,    {false,  do_sysclktz}}},
         {"trigger",                 {1,     1,    {false,  do_trigger}}},

@@ -35,7 +35,7 @@ static const char* LOG_NAME[LOG_ID_MAX] = {
     /* clang-format on */
 };
 
-LIBLOG_ABI_PUBLIC const char* android_log_id_to_name(log_id_t log_id) {
+const char* android_log_id_to_name(log_id_t log_id) {
   if (log_id >= LOG_ID_MAX) {
     log_id = LOG_ID_MAIN;
   }
@@ -45,13 +45,14 @@ LIBLOG_ABI_PUBLIC const char* android_log_id_to_name(log_id_t log_id) {
 static_assert(std::is_same<std::underlying_type<log_id_t>::type, uint32_t>::value,
               "log_id_t must be an unsigned int");
 
-LIBLOG_ABI_PUBLIC log_id_t android_name_to_log_id(const char* logName) {
+log_id_t android_name_to_log_id(const char* logName) {
   const char* b;
   unsigned int ret;
 
   if (!logName) {
-    return static_cast<log_id_t>(0xFFFFFFFF);
+    return static_cast<log_id_t>(LOG_ID_MAX);
   }
+
   b = strrchr(logName, '/');
   if (!b) {
     b = logName;
@@ -65,5 +66,6 @@ LIBLOG_ABI_PUBLIC log_id_t android_name_to_log_id(const char* logName) {
       return static_cast<log_id_t>(ret);
     }
   }
-  return static_cast<log_id_t>(0xFFFFFFFF); /* should never happen */
+
+  return static_cast<log_id_t>(LOG_ID_MAX);
 }

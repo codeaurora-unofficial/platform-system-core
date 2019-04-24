@@ -16,6 +16,8 @@
 
 #include "android-base/mapped_file.h"
 
+#include <errno.h>
+
 namespace android {
 namespace base {
 
@@ -39,7 +41,14 @@ std::unique_ptr<MappedFile> MappedFile::FromFd(int fd, off64_t offset, size_t le
   HANDLE handle =
       CreateFileMapping(reinterpret_cast<HANDLE>(_get_osfhandle(fd)), nullptr,
                         (prot & PROT_WRITE) ? PAGE_READWRITE : PAGE_READONLY, 0, 0, nullptr);
-  if (handle == nullptr) return nullptr;
+  if (handle == nullptr) {
+    // http://b/119818070 "app crashes when reading asset of zero length".
+    // Return a MappedFile that's only valid for reading the size.
+    if (length == 0) {
+      return std::unique_ptr<MappedFile>(new MappedFile{nullptr, 0, 0, nullptr});
+    }
+    return nullptr;
+  }
   void* base = MapViewOfFile(handle, (prot & PROT_WRITE) ? FILE_MAP_ALL_ACCESS : FILE_MAP_READ, 0,
                              file_offset, file_length);
   if (base == nullptr) {
@@ -50,7 +59,14 @@ std::unique_ptr<MappedFile> MappedFile::FromFd(int fd, off64_t offset, size_t le
       new MappedFile{static_cast<char*>(base), length, slop, handle});
 #else
   void* base = mmap(nullptr, file_length, prot, MAP_SHARED, fd, file_offset);
-  if (base == MAP_FAILED) return nullptr;
+  if (base == MAP_FAILED) {
+    // http://b/119818070 "app crashes when reading asset of zero length".
+    // mmap fails with EINVAL for a zero length region.
+    if (errno == EINVAL && length == 0) {
+      return std::unique_ptr<MappedFile>(new MappedFile{nullptr, 0, 0});
+    }
+    return nullptr;
+  }
   return std::unique_ptr<MappedFile>(new MappedFile{static_cast<char*>(base), length, slop});
 #endif
 }

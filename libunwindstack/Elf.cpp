@@ -93,9 +93,12 @@ void Elf::Invalidate() {
   valid_ = false;
 }
 
-bool Elf::GetSoname(std::string* name) {
+std::string Elf::GetSoname() {
   std::lock_guard<std::mutex> guard(lock_);
-  return valid_ && interface_->GetSoname(name);
+  if (!valid_) {
+    return "";
+  }
+  return interface_->GetSoname();
 }
 
 uint64_t Elf::GetRelPc(uint64_t pc, const MapInfo* map_info) {
@@ -234,6 +237,24 @@ bool Elf::IsValidPc(uint64_t pc) {
   }
 
   if (gnu_debugdata_interface_ != nullptr && gnu_debugdata_interface_->IsValidPc(pc)) {
+    return true;
+  }
+
+  return false;
+}
+
+bool Elf::GetTextRange(uint64_t* addr, uint64_t* size) {
+  if (!valid_) {
+    return false;
+  }
+
+  if (interface_->GetTextRange(addr, size)) {
+    *addr += load_bias_;
+    return true;
+  }
+
+  if (gnu_debugdata_interface_ != nullptr && gnu_debugdata_interface_->GetTextRange(addr, size)) {
+    *addr += load_bias_;
     return true;
   }
 
