@@ -49,11 +49,7 @@ MountHandlerEntry ParseMount(const std::string& line) {
     auto fields = android::base::Split(line, " ");
     while (fields.size() < 3) fields.emplace_back("");
     if (fields[0] == "/dev/root") {
-        auto& dm = dm::DeviceMapper::Instance();
-        std::string path;
-        if (dm.GetDmDevicePathByName("system", &path) || dm.GetDmDevicePathByName("vroot", &path)) {
-            fields[0] = path;
-        } else if (android::fs_mgr::Fstab fstab; android::fs_mgr::ReadDefaultFstab(&fstab)) {
+        if (android::fs_mgr::Fstab fstab; android::fs_mgr::ReadDefaultFstab(&fstab)) {
             auto entry = GetEntryForMountPoint(&fstab, "/");
             if (entry || (entry = GetEntryForMountPoint(&fstab, "/system"))) {
                 fields[0] = entry->blk_device;

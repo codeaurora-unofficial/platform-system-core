@@ -200,7 +200,8 @@ static bool format_verity_table(char *buf, const size_t bufsize,
     int res = -1;
 
     if (params->mode == VERITY_MODE_RESTART) {
-        mode_flag = VERITY_TABLE_OPT_RESTART;
+        //mode_flag = VERITY_TABLE_OPT_RESTART;
+         mode_flag = VERITY_TABLE_OPT_LOGGING;
     } else if (params->mode == VERITY_MODE_LOGGING) {
         mode_flag = VERITY_TABLE_OPT_LOGGING;
     }

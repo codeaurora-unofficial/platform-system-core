@@ -159,7 +159,6 @@ static Fstab ReadFirstStageFstab() {
     }
     return fstab;
 }
-
 static bool GetRootEntry(FstabEntry* root_entry) {
     Fstab proc_mounts;
     if (!ReadFstabFromFile("/proc/mounts", &proc_mounts)) {
@@ -181,13 +180,8 @@ static bool GetRootEntry(FstabEntry* root_entry) {
     *root_entry = std::move(*entry);
 
     // We don't know if we're avb or not, so we query device mapper as if we are avb.  If we get a
-    // success, then mark as avb, otherwise default to verify.
-    auto& dm = android::dm::DeviceMapper::Instance();
-    if (dm.GetState("vroot") != android::dm::DmDeviceState::INVALID) {
-        root_entry->fs_mgr_flags.avb = true;
-    } else {
-        root_entry->fs_mgr_flags.verify = true;
-    }
+    // success, then mark as avb, otherwise default to verify
+    root_entry->fs_mgr_flags.avb = true;
     return true;
 }
 
