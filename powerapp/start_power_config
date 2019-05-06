@@ -397,5 +397,14 @@ case "$1" in
         ;;
 esac
 
+# check if we are in recovery-boot mode and disable autosleep
+# check for find_recovery_partitions.sh rather than the
+# /usr/bin/recovery binary since the recovery binary is
+# present in mission-mode bootup on devices that use A/B boot.
+if [ -e /etc/init.d/find_recovery_partitions.sh ]; then
+    echo -n "In recovery mode; turning off autosleep.." > /dev/kmsg
+    echo off > /sys/power/autosleep
+fi
+
 exit 0
 
