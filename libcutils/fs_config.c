@@ -100,6 +100,7 @@ static const struct fs_path_config android_dirs[] = {
     { 00770, AID_WWWDATA,   AID_WWWDATA,   0, "system/WEBSERVER" },
     { 00770, AID_WWWDATA,   AID_WWWDATA,   0, "system/www" },
     { 01755, AID_ROOT,      AID_ROOT,      0, "system/tmp" },
+    { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/tests" },
 
     { 00755, AID_ROOT,   AID_ROOT,   0, 0 },
 };
@@ -246,6 +247,7 @@ static const struct fs_path_config android_files[] = {
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/lib/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/libexec/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/kernel-tests/*" },
+    { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/tests/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/kernel-tests/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/data/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/etc/*" },
