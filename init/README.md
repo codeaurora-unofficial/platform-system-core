@@ -191,7 +191,7 @@ runs the service.
 
 `critical`
 > This is a device-critical service. If it exits more than four times in
-  four minutes, the device will reboot into bootloader.
+  four minutes or before boot completes, the device will reboot into bootloader.
 
 `disabled`
 > This service will not automatically start with its class.
@@ -276,10 +276,6 @@ runs the service.
   will use for this service. Pay close attention to the order in which init.rc files are parsed,
   since it has some peculiarities for backwards compatibility reasons. The 'imports' section of
   this file has more details on the order.
-
-`parse_apex_configs`
-  Parses config file(s) from the mounted APEXes. Intented to be used only once
-  when apexd notifies the mount event by setting apexd.status to ready.
 
 `priority <priority>`
 > Scheduling priority of the service process. This value has to be in range
@@ -416,6 +412,10 @@ Commands
   not already running.  See the start entry for more information on
   starting services.
 
+`class_start_post_data <serviceclass>`
+> Like `class_start`, but only considers services that were started
+  after /data was mounted. Only used for FDE devices.
+
 `class_stop <serviceclass>`
 > Stop and disable all services of the specified class if they are
   currently running.
@@ -424,6 +424,10 @@ Commands
 > Stop all services of the specified class if they are
   currently running, without disabling them. They can be restarted
   later using `class_start`.
+
+`class_reset_post_data <serviceclass>`
+> Like `class_reset`, but only considers services that were started
+  after /data was mounted. Only used for FDE devices.
 
 `class_restart <serviceclass>`
 > Restarts all services of the specified class.
@@ -494,6 +498,10 @@ Commands
 `loglevel <level>`
 > Sets the kernel log level to level. Properties are expanded within _level_.
 
+`mark_post_data`
+> Used to mark the point right after /data is mounted. Used to implement the
+  `class_reset_post_data` and `class_start_post_data` commands.
+
 `mkdir <path> [mode] [owner] [group]`
 > Create a directory at _path_, optionally with the given mode, owner, and
   group. If not provided, the directory is created with permissions 755 and
@@ -511,6 +519,10 @@ Commands
   _flag_s include "ro", "rw", "remount", "noatime", ...
   _options_ include "barrier=1", "noauto\_da\_alloc", "discard", ... as
   a comma separated string, eg: barrier=1,noauto\_da\_alloc
+
+`parse_apex_configs`
+> Parses config file(s) from the mounted APEXes. Intented to be used only once
+  when apexd notifies the mount event by setting apexd.status to ready.
 
 `restart <service>`
 > Stops and restarts a running service, does nothing if the service is currently
@@ -660,11 +672,18 @@ The below pseudocode may explain this more clearly:
 
 Properties
 ----------
-Init provides information about the services that it is responsible
-for via the below properties.
+Init provides state information with the following properties.
 
 `init.svc.<name>`
 > State of a named service ("stopped", "stopping", "running", "restarting")
+
+`dev.mnt.blk.<mount_point>`
+> Block device base name associated with a *mount_point*.
+  The *mount_point* has / replaced by . and if referencing the root mount point
+  "/", it will use "/root", specifically `dev.mnt.blk.root`.
+  Meant for references to `/sys/device/block/${dev.mnt.blk.<mount_point>}/` and
+  `/sys/fs/ext4/${dev.mnt.blk.<mount_point>}/` to tune the block device
+  characteristics in a device agnostic manner.
 
 
 Boot timing

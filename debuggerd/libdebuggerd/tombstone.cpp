@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -150,6 +151,7 @@ static void dump_thread_info(log_t* log, const ThreadInfo& thread_info) {
 
   _LOG(log, logtype::HEADER, "pid: %d, tid: %d, name: %s  >>> %s <<<\n", thread_info.pid,
        thread_info.tid, thread_info.thread_name.c_str(), thread_info.process_name.c_str());
+  _LOG(log, logtype::HEADER, "uid: %d\n", thread_info.uid);
 }
 
 static void dump_stack_segment(log_t* log, unwindstack::Maps* maps, unwindstack::Memory* memory,
@@ -316,7 +318,7 @@ static void dump_all_maps(log_t* log, unwindstack::Unwinder* unwinder, uint64_t 
   std::shared_ptr<unwindstack::Memory>& process_memory = unwinder->GetProcessMemory();
 
   std::string line;
-  for (unwindstack::MapInfo* map_info : *maps) {
+  for (auto const& map_info : *maps) {
     line = "    ";
     if (print_fault_address_marker) {
       if (addr < map_info->start) {
@@ -367,12 +369,6 @@ static void dump_all_maps(log_t* log, unwindstack::Unwinder* unwinder, uint64_t 
   if (print_fault_address_marker) {
     _LOG(log, logtype::MAPS, "--->Fault address falls at %s after any mapped regions\n",
          get_addr_string(addr).c_str());
-  }
-}
-
-void dump_backtrace(log_t* log, unwindstack::Unwinder* unwinder, const char* prefix) {
-  for (size_t i = 0; i < unwinder->NumFrames(); i++) {
-    _LOG(log, logtype::BACKTRACE, "%s%s\n", prefix, unwinder->FormatFrame(i).c_str());
   }
 }
 
@@ -468,7 +464,7 @@ static bool dump_thread(log_t* log, unwindstack::Unwinder* unwinder, const Threa
     _LOG(log, logtype::THREAD, "Failed to unwind");
   } else {
     _LOG(log, logtype::BACKTRACE, "\nbacktrace:\n");
-    dump_backtrace(log, unwinder, "    ");
+    log_backtrace(log, unwinder, "    ");
 
     _LOG(log, logtype::STACK, "\nstack:\n");
     dump_stack(log, unwinder->frames(), unwinder->GetMaps(), unwinder->GetProcessMemory().get());
@@ -620,6 +616,7 @@ static void dump_logs(log_t* log, pid_t pid, unsigned int tail) {
 
 void engrave_tombstone_ucontext(int tombstone_fd, uint64_t abort_msg_address, siginfo_t* siginfo,
                                 ucontext_t* ucontext) {
+  pid_t uid = getuid();
   pid_t pid = getpid();
   pid_t tid = gettid();
 
@@ -641,6 +638,7 @@ void engrave_tombstone_ucontext(int tombstone_fd, uint64_t abort_msg_address, si
   std::map<pid_t, ThreadInfo> threads;
   threads[gettid()] = ThreadInfo{
       .registers = std::move(regs),
+      .uid = uid,
       .tid = tid,
       .thread_name = thread_name,
       .pid = pid,

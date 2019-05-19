@@ -188,7 +188,7 @@ static void connect_service(unique_fd fd, std::string host) {
     if (!strncmp(host.c_str(), "emu:", 4)) {
         connect_emulator(host.c_str() + 4, &response);
     } else {
-        connect_device(host.c_str(), &response);
+        connect_device(host, &response);
     }
 
     // Send response for emulator and device
@@ -227,6 +227,8 @@ asocket* host_service_to_socket(std::string_view name, std::string_view serial,
             sinfo->state = kCsDevice;
         } else if (name == "-recovery") {
             sinfo->state = kCsRecovery;
+        } else if (name == "-rescue") {
+            sinfo->state = kCsRescue;
         } else if (name == "-sideload") {
             sinfo->state = kCsSideload;
         } else if (name == "-bootloader") {

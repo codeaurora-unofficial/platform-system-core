@@ -101,6 +101,7 @@ using Fstab = std::vector<FstabEntry>;
 bool ReadFstabFromFile(const std::string& path, Fstab* fstab);
 bool ReadFstabFromDt(Fstab* fstab, bool log = true);
 bool ReadDefaultFstab(Fstab* fstab);
+bool SkipMountingPartitions(Fstab* fstab);
 
 FstabEntry* GetEntryForMountPoint(Fstab* fstab, const std::string& path);
 
@@ -108,6 +109,11 @@ FstabEntry* GetEntryForMountPoint(Fstab* fstab, const std::string& path);
 FstabEntry BuildGsiSystemFstabEntry();
 
 std::set<std::string> GetBootDevices();
+
+// Return the name of the dm-verity device for the given fstab entry. This does
+// not check whether the device is valid or exists; it merely returns the
+// expected name.
+std::string GetVerityDeviceName(const FstabEntry& entry);
 
 }  // namespace fs_mgr
 }  // namespace android

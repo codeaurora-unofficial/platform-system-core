@@ -307,7 +307,7 @@ static bool read_ext4_superblock(const std::string& blk_device, struct ext4_supe
         return false;
     }
 
-    if (pread(fd, sb, sizeof(*sb), 1024) != sizeof(*sb)) {
+    if (TEMP_FAILURE_RETRY(pread(fd, sb, sizeof(*sb), 1024)) != sizeof(*sb)) {
         PERROR << "Can't read '" << blk_device << "' superblock";
         return false;
     }
@@ -323,6 +323,17 @@ static bool read_ext4_superblock(const std::string& blk_device, struct ext4_supe
     if (sb->s_max_mnt_count == 0xffff) {  // -1 (int16) in ext2, but uint16 in ext4
         *fs_stat |= FS_STAT_NEW_IMAGE_VERSION;
     }
+    return true;
+}
+
+// exported silent version of the above that just answer the question is_ext4
+bool fs_mgr_is_ext4(const std::string& blk_device) {
+    android::base::ErrnoRestorer restore;
+    android::base::unique_fd fd(TEMP_FAILURE_RETRY(open(blk_device.c_str(), O_RDONLY | O_CLOEXEC)));
+    if (fd < 0) return false;
+    ext4_super_block sb;
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb, sizeof(sb), 1024)) != sizeof(sb)) return false;
+    if (!is_ext4_superblock_valid(&sb)) return false;
     return true;
 }
 
@@ -494,11 +505,12 @@ static bool read_f2fs_superblock(const std::string& blk_device, int* fs_stat) {
         return false;
     }
 
-    if (pread(fd, &sb1, sizeof(sb1), F2FS_SUPER_OFFSET) != sizeof(sb1)) {
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb1, sizeof(sb1), F2FS_SUPER_OFFSET)) != sizeof(sb1)) {
         PERROR << "Can't read '" << blk_device << "' superblock1";
         return false;
     }
-    if (pread(fd, &sb2, sizeof(sb2), F2FS_BLKSIZE + F2FS_SUPER_OFFSET) != sizeof(sb2)) {
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb2, sizeof(sb2), F2FS_BLKSIZE + F2FS_SUPER_OFFSET)) !=
+        sizeof(sb2)) {
         PERROR << "Can't read '" << blk_device << "' superblock2";
         return false;
     }
@@ -509,6 +521,23 @@ static bool read_f2fs_superblock(const std::string& blk_device, int* fs_stat) {
         return false;
     }
     return true;
+}
+
+// exported silent version of the above that just answer the question is_f2fs
+bool fs_mgr_is_f2fs(const std::string& blk_device) {
+    android::base::ErrnoRestorer restore;
+    android::base::unique_fd fd(TEMP_FAILURE_RETRY(open(blk_device.c_str(), O_RDONLY | O_CLOEXEC)));
+    if (fd < 0) return false;
+    __le32 sb;
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb, sizeof(sb), F2FS_SUPER_OFFSET)) != sizeof(sb)) {
+        return false;
+    }
+    if (sb == cpu_to_le32(F2FS_SUPER_MAGIC)) return true;
+    if (TEMP_FAILURE_RETRY(pread(fd, &sb, sizeof(sb), F2FS_BLKSIZE + F2FS_SUPER_OFFSET)) !=
+        sizeof(sb)) {
+        return false;
+    }
+    return sb == cpu_to_le32(F2FS_SUPER_MAGIC);
 }
 
 //
@@ -1255,6 +1284,46 @@ int fs_mgr_mount_all(Fstab* fstab, int mount_mode) {
     }
 }
 
+int fs_mgr_umount_all(android::fs_mgr::Fstab* fstab) {
+    AvbUniquePtr avb_handle(nullptr);
+    int ret = FsMgrUmountStatus::SUCCESS;
+    for (auto& current_entry : *fstab) {
+        if (!IsMountPointMounted(current_entry.mount_point)) {
+            continue;
+        }
+
+        if (umount(current_entry.mount_point.c_str()) == -1) {
+            PERROR << "Failed to umount " << current_entry.mount_point;
+            ret |= FsMgrUmountStatus::ERROR_UMOUNT;
+            continue;
+        }
+
+        if (current_entry.fs_mgr_flags.logical) {
+            if (!fs_mgr_update_logical_partition(&current_entry)) {
+                LERROR << "Could not get logical partition blk_device, skipping!";
+                ret |= FsMgrUmountStatus::ERROR_DEVICE_MAPPER;
+                continue;
+            }
+        }
+
+        if (current_entry.fs_mgr_flags.avb || !current_entry.avb_keys.empty()) {
+            if (!AvbHandle::TearDownAvbHashtree(&current_entry, true /* wait */)) {
+                LERROR << "Failed to tear down AVB on mount point: " << current_entry.mount_point;
+                ret |= FsMgrUmountStatus::ERROR_VERITY;
+                continue;
+            }
+        } else if ((current_entry.fs_mgr_flags.verify)) {
+            if (!fs_mgr_teardown_verity(&current_entry, true /* wait */)) {
+                LERROR << "Failed to tear down verified partition on mount point: "
+                       << current_entry.mount_point;
+                ret |= FsMgrUmountStatus::ERROR_VERITY;
+                continue;
+            }
+        }
+    }
+    return ret;
+}
+
 // wrapper to __mount() and expects a fully prepared fstab_rec,
 // unlike fs_mgr_do_mount which does more things with avb / verity etc.
 int fs_mgr_do_mount_one(const FstabEntry& entry, const std::string& mount_point) {
@@ -1596,14 +1665,7 @@ bool fs_mgr_is_verity_enabled(const FstabEntry& entry) {
 
     DeviceMapper& dm = DeviceMapper::Instance();
 
-    std::string mount_point;
-    if (entry.mount_point == "/") {
-        // In AVB, the dm device name is vroot instead of system.
-        mount_point = entry.fs_mgr_flags.avb ? "vroot" : "system";
-    } else {
-        mount_point = Basename(entry.mount_point);
-    }
-
+    std::string mount_point = GetVerityDeviceName(entry);
     if (dm.GetState(mount_point) == DmDeviceState::INVALID) {
         return false;
     }
@@ -1626,13 +1688,35 @@ bool fs_mgr_is_verity_enabled(const FstabEntry& entry) {
     return false;
 }
 
+bool fs_mgr_verity_is_check_at_most_once(const android::fs_mgr::FstabEntry& entry) {
+    if (!entry.fs_mgr_flags.verify && !entry.fs_mgr_flags.avb) {
+        return false;
+    }
+
+    DeviceMapper& dm = DeviceMapper::Instance();
+    std::string device = GetVerityDeviceName(entry);
+
+    std::vector<DeviceMapper::TargetInfo> table;
+    if (dm.GetState(device) == DmDeviceState::INVALID || !dm.GetTableInfo(device, &table)) {
+        return false;
+    }
+    for (const auto& target : table) {
+        if (strcmp(target.spec.target_type, "verity") == 0 &&
+            target.data.find("check_at_most_once") != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string fs_mgr_get_super_partition_name(int slot) {
     // Devices upgrading to dynamic partitions are allowed to specify a super
-    // partition name, assumed to be A/B (non-A/B retrofit is not supported).
-    // For devices launching with dynamic partition support, the partition
-    // name must be "super".
+    // partition name. This includes cuttlefish, which is a non-A/B device.
     std::string super_partition;
     if (fs_mgr_get_boot_config_from_kernel_cmdline("super_partition", &super_partition)) {
+        if (fs_mgr_get_slot_suffix().empty()) {
+            return super_partition;
+        }
         std::string suffix;
         if (slot == 0) {
             suffix = "_a";

@@ -38,6 +38,7 @@
 
 using android::base::ParseByteCount;
 using android::base::ParseInt;
+using android::base::ReadFileToString;
 using android::base::Split;
 using android::base::StartsWith;
 
@@ -308,6 +309,8 @@ void ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
             } else {
                 entry->logical_blk_size = val;
             }
+        } else if (StartsWith(flag, "avb_keys=")) {  // must before the following "avb"
+            entry->avb_keys = arg;
         } else if (StartsWith(flag, "avb")) {
             entry->fs_mgr_flags.avb = true;
             entry->vbmeta_partition = arg;
@@ -326,8 +329,6 @@ void ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
             }
         } else if (StartsWith(flag, "zram_backing_dev_path=")) {
             entry->zram_backing_dev_path = arg;
-        } else if (StartsWith(flag, "avb_keys=")) {
-            entry->avb_keys = arg;
         } else {
             LWARNING << "Warning: unknown flag: " << flag;
         }
@@ -661,6 +662,8 @@ bool ReadFstabFromFile(const std::string& path, Fstab* fstab) {
         TransformFstabForGsi(fstab);
     }
 
+    SkipMountingPartitions(fstab);
+
     return true;
 }
 
@@ -686,6 +689,36 @@ bool ReadFstabFromDt(Fstab* fstab, bool log) {
                    << fstab_buf;
         }
         return false;
+    }
+
+    SkipMountingPartitions(fstab);
+
+    return true;
+}
+
+// For GSI to skip mounting /product and /product_services, until there are
+// well-defined interfaces between them and /system. Otherwise, the GSI flashed
+// on /system might not be able to work with /product and /product_services.
+// When they're skipped here, /system/product and /system/product_services in
+// GSI will be used.
+bool SkipMountingPartitions(Fstab* fstab) {
+    constexpr const char kSkipMountConfig[] = "/system/etc/init/config/skip_mount.cfg";
+
+    std::string skip_config;
+    if (!ReadFileToString(kSkipMountConfig, &skip_config)) {
+        return true;
+    }
+
+    for (const auto& skip_mount_point : Split(skip_config, "\n")) {
+        if (skip_mount_point.empty()) {
+            continue;
+        }
+        auto it = std::remove_if(fstab->begin(), fstab->end(),
+                                 [&skip_mount_point](const auto& entry) {
+                                     return entry.mount_point == skip_mount_point;
+                                 });
+        fstab->erase(it, fstab->end());
+        LOG(INFO) << "Skip mounting partition: " << skip_mount_point;
     }
 
     return true;
@@ -755,18 +788,30 @@ std::set<std::string> GetBootDevices() {
 
 FstabEntry BuildGsiSystemFstabEntry() {
     // .logical_partition_name is required to look up AVB Hashtree descriptors.
-    FstabEntry system = {.blk_device = "system_gsi",
-                         .mount_point = "/system",
-                         .fs_type = "ext4",
-                         .flags = MS_RDONLY,
-                         .fs_options = "barrier=1",
-                         // could add more keys separated by ':'.
-                         .avb_keys = "/avb/gsi.avbpubkey:",
-                         .logical_partition_name = "system"};
+    FstabEntry system = {
+            .blk_device = "system_gsi",
+            .mount_point = "/system",
+            .fs_type = "ext4",
+            .flags = MS_RDONLY,
+            .fs_options = "barrier=1",
+            // could add more keys separated by ':'.
+            .avb_keys = "/avb/q-gsi.avbpubkey:/avb/r-gsi.avbpubkey:/avb/s-gsi.avbpubkey",
+            .logical_partition_name = "system"};
     system.fs_mgr_flags.wait = true;
     system.fs_mgr_flags.logical = true;
     system.fs_mgr_flags.first_stage_mount = true;
     return system;
+}
+
+std::string GetVerityDeviceName(const FstabEntry& entry) {
+    std::string base_device;
+    if (entry.mount_point == "/") {
+        // In AVB, the dm device name is vroot instead of system.
+        base_device = entry.fs_mgr_flags.avb ? "vroot" : "system";
+    } else {
+        base_device = android::base::Basename(entry.mount_point);
+    }
+    return base_device + "-verity";
 }
 
 }  // namespace fs_mgr

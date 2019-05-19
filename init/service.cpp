@@ -177,7 +177,7 @@ Result<Success> Service::SetUpPidNamespace() const {
 Result<Success> Service::EnterNamespaces() const {
     for (const auto& [nstype, path] : namespaces_to_enter_) {
         auto fd = unique_fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
-        if (!fd) {
+        if (fd == -1) {
             return ErrnoError() << "Could not open namespace at " << path;
         }
         if (setns(fd, nstype) == -1) {
@@ -362,7 +362,7 @@ void Service::Reap(const siginfo_t& siginfo) {
 
     // Oneshot processes go into the disabled state on exit,
     // except when manually restarted.
-    if ((flags_ & SVC_ONESHOT) && !(flags_ & SVC_RESTART)) {
+    if ((flags_ & SVC_ONESHOT) && !(flags_ & SVC_RESTART) && !(flags_ & SVC_RESET)) {
         flags_ |= SVC_DISABLED;
     }
 
@@ -372,16 +372,20 @@ void Service::Reap(const siginfo_t& siginfo) {
         return;
     }
 
-    // If we crash > 4 times in 4 minutes, reboot into bootloader or set crashing property
+    // If we crash > 4 times in 4 minutes or before boot_completed,
+    // reboot into bootloader or set crashing property
     boot_clock::time_point now = boot_clock::now();
     if (((flags_ & SVC_CRITICAL) || !pre_apexd_) && !(flags_ & SVC_RESTART)) {
-        if (now < time_crashed_ + 4min) {
+        bool boot_completed = android::base::GetBoolProperty("sys.boot_completed", false);
+        if (now < time_crashed_ + 4min || !boot_completed) {
             if (++crash_count_ > 4) {
                 if (flags_ & SVC_CRITICAL) {
                     // Aborts into bootloader
-                    LOG(FATAL) << "critical process '" << name_ << "' exited 4 times in 4 minutes";
+                    LOG(FATAL) << "critical process '" << name_ << "' exited 4 times "
+                               << (boot_completed ? "in 4 minutes" : "before boot completed");
                 } else {
-                    LOG(ERROR) << "updatable process '" << name_ << "' exited 4 times in 4 minutes";
+                    LOG(ERROR) << "updatable process '" << name_ << "' exited 4 times "
+                               << (boot_completed ? "in 4 minutes" : "before boot completed");
                     // Notifies update_verifier and apexd
                     property_set("ro.init.updatable_crashing", "1");
                 }
@@ -756,6 +760,11 @@ Result<Success> Service::ParseFile(std::vector<std::string>&& args) {
     if (args[2] != "r" && args[2] != "w" && args[2] != "rw") {
         return Error() << "file type must be 'r', 'w' or 'rw'";
     }
+    std::string expanded;
+    if (!expand_props(args[1], &expanded)) {
+        return Error() << "Could not expand property in file path '" << args[1] << "'";
+    }
+    args[1] = std::move(expanded);
     if ((args[1][0] != '/') || (args[1].find("../") != std::string::npos)) {
         return Error() << "file name must not be relative";
     }
@@ -942,6 +951,8 @@ Result<Success> Service::Start() {
         pre_apexd_ = true;
     }
 
+    post_data_ = ServiceList::GetInstance().IsPostData();
+
     LOG(INFO) << "starting service '" << name_ << "'...";
 
     pid_t pid = -1;
@@ -1059,7 +1070,7 @@ Result<Success> Service::Start() {
         std::string oom_str = std::to_string(oom_score_adjust_);
         std::string oom_file = StringPrintf("/proc/%d/oom_score_adj", pid);
         if (!WriteStringToFile(oom_str, oom_file)) {
-            PLOG(ERROR) << "couldn't write oom_score_adj: " << strerror(errno);
+            PLOG(ERROR) << "couldn't write oom_score_adj";
         }
     }
 
@@ -1139,6 +1150,12 @@ Result<Success> Service::Enable() {
 
 void Service::Reset() {
     StopOrReset(SVC_RESET);
+}
+
+void Service::ResetIfPostData() {
+    if (post_data_) {
+        StopOrReset(SVC_RESET);
+    }
 }
 
 void Service::Stop() {
@@ -1332,6 +1349,14 @@ void ServiceList::DumpState() const {
     for (const auto& s : services_) {
         s->DumpState();
     }
+}
+
+void ServiceList::MarkPostData() {
+    post_data_ = true;
+}
+
+bool ServiceList::IsPostData() {
+    return post_data_;
 }
 
 void ServiceList::MarkServicesUpdate() {

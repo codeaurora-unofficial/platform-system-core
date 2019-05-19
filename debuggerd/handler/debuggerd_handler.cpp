@@ -268,8 +268,15 @@ static void create_vm_process() {
       _exit(errno);
     }
 
-    // Exit immediately on both sides of the fork.
-    // crash_dump is ptracing us, so it'll get to do whatever it wants in between.
+    // crash_dump is ptracing both sides of the fork; it'll let the parent exit,
+    // but keep the orphan stopped to peek at its memory.
+
+    // There appears to be a bug in the kernel where our death causes SIGHUP to
+    // be sent to our process group if we exit while it has stopped jobs (e.g.
+    // because of wait_for_gdb). Use setsid to create a new process group to
+    // avoid hitting this.
+    setsid();
+
     _exit(0);
   }
 
@@ -383,7 +390,9 @@ static int debuggerd_dispatch_pseudothread(void* arg) {
 
     execle(CRASH_DUMP_PATH, CRASH_DUMP_NAME, main_tid, pseudothread_tid, debuggerd_dump_type,
            nullptr, nullptr);
-    fatal_errno("exec failed");
+    async_safe_format_log(ANDROID_LOG_FATAL, "libc", "failed to exec crash_dump helper: %s",
+                          strerror(errno));
+    return 1;
   }
 
   input_write.reset();

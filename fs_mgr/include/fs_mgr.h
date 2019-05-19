@@ -79,6 +79,10 @@ bool fs_mgr_is_verity_enabled(const android::fs_mgr::FstabEntry& entry);
 bool fs_mgr_swapon_all(const android::fs_mgr::Fstab& fstab);
 bool fs_mgr_update_logical_partition(android::fs_mgr::FstabEntry* entry);
 
+// Returns true if the given fstab entry has verity enabled, *and* the verity
+// device is in "check_at_most_once" mode.
+bool fs_mgr_verity_is_check_at_most_once(const android::fs_mgr::FstabEntry& entry);
+
 int fs_mgr_do_format(const android::fs_mgr::FstabEntry& entry, bool reserve_footer);
 
 #define FS_MGR_SETUP_VERITY_SKIPPED  (-3)
@@ -91,3 +95,14 @@ int fs_mgr_setup_verity(android::fs_mgr::FstabEntry* fstab, bool wait_for_verity
 // specified, the super partition for the corresponding metadata slot will be
 // returned. Otherwise, it will use the current slot.
 std::string fs_mgr_get_super_partition_name(int slot = -1);
+
+enum FsMgrUmountStatus : int {
+    SUCCESS = 0,
+    ERROR_UNKNOWN = 1 << 0,
+    ERROR_UMOUNT = 1 << 1,
+    ERROR_VERITY = 1 << 2,
+    ERROR_DEVICE_MAPPER = 1 << 3,
+};
+// fs_mgr_umount_all() is the reverse of fs_mgr_mount_all. In particular,
+// it destroys verity devices from device mapper after the device is unmounted.
+int fs_mgr_umount_all(android::fs_mgr::Fstab* fstab);
