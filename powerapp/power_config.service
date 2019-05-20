@@ -30,7 +30,8 @@ Description=Setting the power config
 SourcePath=/etc/initscripts/power_config
 
 [Service]
-Restart=yes
+Restart=on-failure
+RemainAfterExit=yes
 ExecStart=/etc/initscripts/power_config start
 ExecStop=/etc/initscripts/power_config stop
 
