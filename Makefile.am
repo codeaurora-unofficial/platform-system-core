@@ -15,12 +15,12 @@ BUILD_COMPONENTS += logcat
 BUILD_COMPONENTS += libsysutils
 BUILD_COMPONENTS += logd
 endif
-BUILD_COMPONENTS += libbacktrace
 BUILD_COMPONENTS += leproperties
 BUILD_COMPONENTS += toolbox
 BUILD_COMPONENTS += usb
 BUILD_COMPONENTS += include
 if !NO_DEBUGGERD
+BUILD_COMPONENTS += libbacktrace
 BUILD_COMPONENTS += debuggerd
 endif
 endif
