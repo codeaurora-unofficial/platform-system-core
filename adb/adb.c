@@ -1350,7 +1350,7 @@ int adb_main(int is_daemon, int server_port)
         printf("using port=%d\n", port);
         // listen on TCP port specified by service.adb.tcp.port property
         local_init(port);
-    } else {
+    } else if (!usb) {
         // listen on default port
         local_init(DEFAULT_ADB_LOCAL_TRANSPORT_PORT);
     }
