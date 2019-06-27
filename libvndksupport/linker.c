@@ -44,8 +44,6 @@ static struct android_namespace_t* get_vendor_namespace() {
             name_idx++;
         }
     }
-    //temporary workaround until VNDK is enabled
-    vendor_namespace = NULL;
     return vendor_namespace;
 }
 
