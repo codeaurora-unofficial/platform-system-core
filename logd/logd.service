@@ -33,19 +33,15 @@
 
 [Unit]
 After=earlyinit-logd.service
-Description=logd loggging service
+Description=logd logging service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-
-# Add a small delay (0.2 sec) before setting socket permissions. This is needed
-# for logd to complete intilization before setting permissions.
-ExecStartPre=/bin/sleep 0.2
 ExecStart=+/bin/chmod 0222 /dev/socket/logdw
 ExecStart=+/bin/chmod 0666 /dev/socket/logdr
 ExecStart=+/bin/chmod 0666 /dev/socket/logd
-ExecStop=/bin/rm /dev/socket/logd || /bin/rm /dev/socket/logdr || /bin/rm /dev/socket/logdw
+ExecStopPost=-/bin/rm -rf /dev/socket/logd*
 
 [Install]
 Alias=logcat.service
