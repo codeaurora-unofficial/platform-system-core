@@ -31,7 +31,7 @@ export ANDROID_LOG_TAGS="*:d"
 export LS_COLORS="none"
 
 case "$1" in
-  start)
+  init)
 	if [ -d /sys/class/android_usb/android0/f_ffs ]
 	then
 		echo adb > /sys/class/android_usb/android0/f_ffs/aliases
@@ -279,13 +279,27 @@ case "$1" in
 	fi
 	;;
 
+  start)
+	udcname=`ls -1 /sys/class/udc | head -n 1`
+	if [ -d /sys/kernel/config/usb_gadget ]; then
+		echo "Starting USB Android Gadget"
+		rm -f /data/usb_bind_in_progress
+		echo $udcname > /sys/kernel/config/usb_gadget/g1/UDC
+	fi
+	;;
+
   stop)
-        echo "Stopping USB Android Gadget"
+	if [ -d /sys/kernel/config/usb_gadget ]; then
+		echo "Stopping USB Android Gadget"
+		echo start > /data/usb_bind_in_progress
+		echo none > /sys/kernel/config/usb_gadget/g1/UDC
+	fi
         ;;
 
   restart)
-        $0 stop
-        $0 start
+	echo "Restarting USB Android Gadget"
+	$0 stop
+	$0 start
         ;;
   *)
         echo "Usage usb { start | stop | restart}" >&2

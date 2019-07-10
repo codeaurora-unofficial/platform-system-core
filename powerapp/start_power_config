@@ -309,6 +309,11 @@ case "$1" in
 	"357" | "368")
                 echo -n "Starting powerconfig for SDX55: "
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+                echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+                echo compute > /sys/class/devfreq/soc:qcom,cpubw/governor
+
+                echo mem > /sys/power/autosleep
+                echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
 
 		echo "++++ $0 -> ENABLE-FTRACE START" > /dev/kmsg
 		#Enable FTRACE_ENABLE on SDX55
@@ -381,10 +386,9 @@ case "$1" in
 
 		echo 1 > $DCC_PATH/enable
 		echo "++++ $0 -> ENABLE-DCC END" > /dev/kmsg
-
-		echo "done";
-		;;
-	esac
+                echo "done";
+                ;;
+         esac
 
          case "$soc_id" in
          "116" | "142" | "154")
