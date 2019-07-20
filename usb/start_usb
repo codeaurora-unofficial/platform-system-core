@@ -82,6 +82,7 @@ case "$1" in
 		mkdir functions/gsi.rndis
 		mkdir functions/gsi.ecm
 		mkdir functions/gsi.mbim
+		mkdir functions/gsi.rmnet.v2x
 		mkdir functions/gsi.dpl
 		mkdir functions/gsi.gps
 		mkdir functions/ncm.0
@@ -92,6 +93,7 @@ case "$1" in
 		mkdir functions/uvc.0
 		mkdir functions/rndis.rndis
 		mkdir functions/ipc.ipc
+		mkdir functions/ecm.ecm
 		if [ ! -s "/etc/adb_devid" ]
 		then
 			echo $serialno > /etc/adb_devid
