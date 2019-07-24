@@ -161,9 +161,12 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *sa2150p* )
+		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
+		*sa2150p* )
+			echo 90D9 > /etc/usb/boot_hsusb_comp
+			;;
 		*sm8150* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 			if [ -f /sys/bus/platform/devices/a600000.ssusb/mode ]; then
