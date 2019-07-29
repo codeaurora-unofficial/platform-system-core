@@ -374,6 +374,8 @@ case "$target" in
 		# Keep L2-retention disabled
 		echo N > /sys/module/lpm_levels/perf/perf-l2-retention/idle_enabled
 		echo N > /sys/module/lpm_levels/perf/perf-l2-retention/suspend_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/idle_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/suspend_enabled
 
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
                 echo mem > /sys/power/autosleep
