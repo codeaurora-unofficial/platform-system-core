@@ -87,6 +87,9 @@ case `cat ${TARGET_DIR}` in
 	*6150* | *6155* )
 		res="sm6150";
 		;;
+	*8195* )
+		res="sm8195";
+		;;
 	* )
 		res="none"
 		;;
