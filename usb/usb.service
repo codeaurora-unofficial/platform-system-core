@@ -28,16 +28,12 @@
 [Unit]
 SourcePath=/etc/initscripts/usb
 Description=usb Service
-After=systemrw.mount start_stop_ipa_fws.service
-Requires=systemrw.mount
-RequiresMountsFor=/systemrw
+After=start_stop_ipa_fws.service
 DefaultDependencies=no
 
 [Service]
 Type=oneshot
 Environment="adbd_params=0 y"
 RemainAfterExit=yes
-ExecStartPre=/sbin/mount-copybind /systemrw/adb_devid  /etc/adb_devid
-ExecStartPre=/sbin/mount-copybind /systemrw/boot_hsusb_comp /etc/usb/boot_hsusb_comp
 ExecStart=/etc/initscripts/usb init
 Nice=-5
