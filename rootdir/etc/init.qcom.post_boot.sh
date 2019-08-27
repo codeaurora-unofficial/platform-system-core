@@ -286,7 +286,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS405" | "qcs405")
+    "QCS405" | "qcs405" | "QCS407" | "qcs407")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -300,7 +300,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "352" )
+           "352" | "411")
 
                 #disable sched_boost in qcs405
                 if [ -f /proc/sys/kernel/sched_boost ]; then
