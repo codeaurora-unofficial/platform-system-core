@@ -1,4 +1,6 @@
-# Copyright (c) 2016, The Linux Foundation. All rights reserved.
+#! /bin/sh
+#
+# Copyright (c) 2019, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -25,16 +27,17 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 
-[Unit]
-SourcePath=/sbin/launch_adbd
-Description=adbd Service
-Requires=usb.service
-After=usb.service leprop.service pcie.service
-DefaultDependencies=no
-
-[Service]
-Type=forking
-KillMode=process
-Restart=always
-ExecStart=/sbin/launch_adbd start
-Nice=-5
+# Check for PCIe support
+if [ -e /dev/mhi_ctrl ]; then
+    if [ -e /data/adb.conf ]; then
+        adb_conf=`cat /data/adb.conf`
+        if  [ $adb_conf == "pcie=true" ]; then
+            echo -n "pcie transport mode is enabled... " > /dev/kmsg
+        else
+            echo -n "pcie transport mode is disabled... " > /dev/kmsg
+        fi
+    else
+        printf "pcie=true\0" > /data/adb.conf
+        echo -n "pcie transport mode is enabled... " > /dev/kmsg
+    fi
+fi
