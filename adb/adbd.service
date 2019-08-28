@@ -29,7 +29,7 @@
 SourcePath=/etc/launch_adbd
 Description=adbd Service
 Requires=usb.service
-After=usb.service
+After=usb.service pcie.service
 DefaultDependencies=no
 
 [Service]
