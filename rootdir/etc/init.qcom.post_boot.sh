@@ -287,7 +287,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS405" | "qcs405" | "QCS407" | "qcs407")
+    "QCS405" | "qcs405" | "QCS404" | "qcs404" | "QCS407" | "qcs407")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -301,7 +301,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "352" | "411")
+           "352" | "410" | "411")
 
                 #disable sched_boost in qcs405
                 if [ -f /proc/sys/kernel/sched_boost ]; then
@@ -392,7 +392,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS403" | "qcs403")
+    "QCS403" | "qcs403" | "QCS401" | "qcs401")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -406,7 +406,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "373" )
+           "373" | "372")
 
                 #disable sched_boost in qcs403
                 if [ -f /proc/sys/kernel/sched_boost ]; then
