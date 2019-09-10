@@ -68,7 +68,11 @@ fi
 
 AM_CONDITIONAL([HOST_OS_LINUX], [test "x$HOST_OS" = "xlinux"])
 
-AM_CONDITIONAL(LE_PROPERTIES, [test "x$LE_PROPERTIES_ENABLED" = "xtrue"])
+AC_ARG_ENABLE(leproperties,
+      AC_HELP_STRING([--enable-leproperties], [Enable leproperty usage]),
+         [leprop="yes"], [leprop="no"])
+
+AM_CONDITIONAL(LE_PROPERTIES, [test "x$leprop" = "xyes"])
 
 AC_CONFIG_FILES([ \
     Makefile \

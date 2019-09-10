@@ -1,5 +1,5 @@
 AC_PREREQ(2.61)
-AC_INIT([system-core],1.0.0)
+AC_INIT([adbd],1.0.0)
 AM_INIT_AUTOMAKE([-Wall gnu foreign])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
@@ -18,12 +18,45 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
 
-# Checks for libraries.
+# Check for required libraries.
+PKG_CHECK_MODULES([LIBLOG], [liblog])
+AC_SUBST([LIBLOG_CFLAGS])
+AC_SUBST([LIBLOG_LIBS])
+
 PKG_CHECK_MODULES([LIBSELINUX], [libselinux])
 AC_SUBST([LIBSELINUX_CFLAGS])
 AC_SUBST([LIBSELINUX_LIBS])
 
 PKG_CHECK_MODULES([LIBBASE], [libbase])
+AC_SUBST([LIBBASE_CFLAGS])
+AC_SUBST([LIBBASE_LIBS])
+
+PKG_CHECK_MODULES([LIBCUTILS], [libcutils])
+AC_SUBST([LIBCUTILS_CFLAGS])
+AC_SUBST([LIBCUTILS_LIBS])
+
+PKG_CHECK_MODULES([MINCRYPT], [libmincrypt])
+AC_SUBST([MINCRYPT_CFLAGS])
+AC_SUBST([MINCRYPT_LIBS])
+
+PKG_CHECK_MODULES([FSMGR], [fs_mgr])
+AC_SUBST([FSMGR_CFLAGS])
+AC_SUBST([FSMGR_LIBS])
+
+PKG_CHECK_MODULES([EXT4UTILS], [ext4_utils])
+AC_SUBST([EXT4UTILS_CFLAGS])
+AC_SUBST([EXT4UTILS_LIBS])
+
+AC_ARG_WITH([core_includes],
+    AC_HELP_STRING([--with-core-includes=@<:@dir@:>@],
+       [Specify the location of the core headers]),
+    [core_incdir=$withval],
+    with_core_includes=no)
+
+if test "x$with_core_includes" != "xno"; then
+   CPPFLAGS="${CPPFLAGS} -I${core_incdir}"
+   AC_SUBST(core_incdir,${core_incdir})
+fi
 
 AS_CASE([$host],
         [arm*], [ARM=yes],
@@ -59,11 +92,6 @@ fi
 
 AM_CONDITIONAL([HOST_OS_LINUX], [test "x$HOST_OS" = "xlinux"])
 
-AC_ARG_WITH(sanitized-headers,
-      AS_HELP_STRING([--with-sanitized-headers=DIR],
-         [Specify the location of the sanitized Linux headers]),
-      [CPPFLAGS="$CPPFLAGS -idirafter $withval"])
-
 AC_ARG_WITH([glib],
       AC_HELP_STRING([--with-glib],
          [enable glib, building HLOS systems which use glib]))
@@ -82,35 +110,11 @@ if (test "x${with_glib}" = "xyes"); then
 fi
 AM_CONDITIONAL(USE_GLIB, test "x${with_glib}" = "xyes")
 
-AC_ARG_WITH([logd-logging],
-      AC_HELP_STRING([--with-logd-logging],
-         [enable logd based logging]))
-
-AM_CONDITIONAL(USE_LOGD, [test "x${with_logd_logging}" = "xyes"])
-
-AC_ARG_ENABLE(libsync,
-      AC_HELP_STRING([--disable-libsync], [Disable libsync for target]),
-         [libsync="no"], [libsync="yes"])
-
-AM_CONDITIONAL(NO_LIBSYNC, [test "x${libsync}" = "xno"])
-
 AC_ARG_ENABLE(adb-root,
       AC_HELP_STRING([--disable-adb-root], [Disable root privileges for adbd]),
          [adb_root=${enableval}], [adb_root="yes"])
 
 AM_CONDITIONAL(ADB_ROOT, [test "x${adb_root}" = "xyes"])
-
-AC_ARG_ENABLE(debuggerd,
-      AC_HELP_STRING([--disable-debuggerd], [Disable debuggerd for target]),
-         [debuggerd="no"], [debuggerd="yes"])
-
-AM_CONDITIONAL(NO_DEBUGGERD, [test "x${debuggerd}" = "xno"])
-
-AC_ARG_ENABLE(prop-trig,
-      AC_HELP_STRING([--enable-property-triggers], [Enable property trigger scripts]),
-         [prop_trig="yes"], [prop_trig="no"])
-
-AM_CONDITIONAL(PROPTRIGGER, [test "x${prop_trig}" = "xyes"])
 
 AC_ARG_WITH([system-size],
         [AS_HELP_STRING([--with-system-size=SYSTEM_SIZE],[Size of system partition.])],
@@ -132,23 +136,5 @@ AC_MSG_NOTICE([fec image size $FEC_SIZE detected.])
 
 AC_CONFIG_FILES([ \
     Makefile \
-    logwrapper/Makefile \
-    logwrapper/logwrapper.pc \
-    libsync/Makefile \
-    libsync/libsync.pc \
-    fs_mgr/Makefile \
-    fs_mgr/fs_mgr.pc \
-    libsysutils/Makefile \
-    logcat/Makefile \
-    logd/Makefile \
-    adb/Makefile \
-    fastboot/Makefile \
-    leproperties/Makefile \
-    toolbox/Makefile \
-    usb/Makefile \
-    include/Makefile \
-    libbacktrace/Makefile \
-    libbacktrace/libbacktrace.pc \
-    debuggerd/Makefile
 ])
 AC_OUTPUT

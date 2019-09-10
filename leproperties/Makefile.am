@@ -1,6 +1,16 @@
 root_sbindir       := "/sbin"
 root_sbin_PROGRAMS := leprop-service
 
+bin_PROGRAMS    := setprop
+setprop_SOURCES := setprop.c
+setprop_CFLAGS  := -I$(top_srcdir) @LIBCUTILS_CFLAGS@
+setprop_LDFLAGS := -lselinux @LIBCUTILS_LIBS@
+
+bin_PROGRAMS    += getprop
+getprop_SOURCES := getprop.c
+getprop_CFLAGS  := -I$(top_srcdir) @LIBCUTILS_CFLAGS@
+getprop_LDFLAGS := -lselinux @LIBCUTILS_LIBS@
+
 leprop_service_SOURCES  = property_service.c
 leprop_service_SOURCES += ll.c
 
