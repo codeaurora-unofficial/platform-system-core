@@ -15,7 +15,5 @@ fastboot_CFLAGS  := -Wall -Wextra -Werror -Wunreachable-code
 fastboot_CFLAGS  += -DFASTBOOT_REVISION='"$(fastboot_version)"'
 
 fastboot_LDFLAGS := -lpthread
-fastboot_LDFLAGS += -lext4_utils -lsparse
-fastboot_LDFLAGS += -llog -lbase -lz
-#fastboot_LDFLAGS += -lutils
-#fastboot_LDFLAGS += -lziparchive
+fastboot_LDFLAGS += -lz -lsparse
+fastboot_LDFLAGS += @LIBBASE_LIBS@ @LIBLOG_LIBS@ @EXT4UTILS_LIBS@

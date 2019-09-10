@@ -57,7 +57,7 @@ libcutils_la_CPPFLAGS += -D_GNU_SOURCE
 if LE_PROPERTIES
 libcutils_la_CPPFLAGS += -DLE_PROPERTIES
 endif
-libcutils_la_LDFLAGS  := -lpthread -llog
+libcutils_la_LDFLAGS  := -lpthread @LIBLOG_LIBS@
 
 if BUILD_HOST
 libcutils_la_SOURCES  += $(host_sources)
@@ -77,7 +77,7 @@ if ARM64
 libcutils_la_SOURCES  += arch-arm64/android_memset.S
 endif
 
-libcutils_la_LDFLAGS  := -lpthread -llog
+libcutils_la_LDFLAGS  := -lpthread @LIBLOG_LIBS@
 
 # Export headers
 cutils_includedir=$(includedir)/cutils
@@ -113,6 +113,7 @@ cutils_include_HEADERS += @core_incdir@/cutils/str_parms.h
 cutils_include_HEADERS += @core_incdir@/cutils/threads.h
 cutils_include_HEADERS += @core_incdir@/cutils/trace.h
 cutils_include_HEADERS += @core_incdir@/cutils/uevent.h
+cutils_include_HEADERS += property_ops.h
 
 cutils_sys_includedir=$(includedir)/cutils/sys
 cutils_sys_include_HEADERS := @core_incdir@/sys/capability.h

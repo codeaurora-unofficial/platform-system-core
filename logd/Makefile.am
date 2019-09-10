@@ -24,5 +24,6 @@ logd_CPPFLAGS += -fpermissive -fms-extensions
 logd_CPPFLAGS += -DAUDITD_LOG_TAG=1003 -DLOGD_LOG_TAG=1004
 logd_CPPFLAGS += -DHAVE_ANDROID_OS
 
-logd_LDADD  = ../libsysutils/libsysutils.la
-logd_LDFLAGS = -llog -lcutils -lbase -lpthread -lutils
+logd_LDFLAGS  = -lpthread -lsysutils
+logd_LDFLAGS += @LIBBASE_LIBS@ @LIBLOG_LIBS@
+logd_LDFLAGS += @LIBUTILS_LIBS@ @LIBCUTILS_LIBS@

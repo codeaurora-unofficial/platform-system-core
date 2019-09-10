@@ -25,7 +25,7 @@ libion_la_CFLAGS += -DLEGACY_ION
 else
 libion_la_CFLAGS += -include ion_new.h
 endif
-libion_la_LDFLAGS := -llog
+libion_la_LDFLAGS := @LIBLOG_LIBS@
 
 bindir       := "/bin"
 bin_PROGRAMS := iontest
@@ -41,7 +41,7 @@ iontest_CFLAGS += -DLEGACY_ION
 else
 iontest_CFLAGS += -include ion_new.h
 endif
-iontest_LDFLAGS := -llog
+iontest_LDFLAGS := @LIBLOG_LIBS@
 
 # Export headers
 ion_includedir=$(includedir)/ion_headers/ion

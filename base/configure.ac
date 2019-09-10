@@ -18,14 +18,16 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
 
-
-
 # Checks for libraries.
 PKG_CHECK_MODULES([LIBSELINUX], [libselinux])
+AC_SUBST([LIBSELINUX_CFLAGS])
+AC_SUBST([LIBSELINUX_LIBS])
 
+PKG_CHECK_MODULES([LIBCUTILS], [libcutils])
+AC_SUBST([LIBCUTILS_CFLAGS])
+AC_SUBST([LIBCUTILS_LIBS])
 
 #obtain  system-core source path.
-
 AC_ARG_WITH([core_sourcedir],
     AC_HELP_STRING([--with-core-sourcedir=@<:@dir@:>@],
        [Specify the location of the core headers]),
