@@ -27,9 +27,7 @@ libadbd_la_SOURCES += jdwp_service.cpp
 libadbd_la_SOURCES += usb_linux_client.cpp
 #libadbd_la_SOURCES += qemu_tracing.cpp
 
-libadbd_la_CPPFLAGS := -I$(top_srcdir)/include
-libadbd_la_CPPFLAGS += -I$(top_srcdir)/base/include
-libadbd_la_CPPFLAGS += -I$(top_srcdir)/fs_mgr/include
+libadbd_la_CPPFLAGS := @LIBCUTILS_CFLAGS@ @FSMGR_CFLAGS@
 libadbd_la_CPPFLAGS += -Wall -Wno-unused-parameter
 libadbd_la_CPPFLAGS += -Wno-deprecated-declarations
 libadbd_la_CPPFLAGS += -std=c++14 -fpermissive
@@ -38,8 +36,9 @@ libadbd_la_CPPFLAGS += -DADB_HOST=0
 libadbd_la_CPPFLAGS += -DADB_REVISION='"$(adb_version)"'
 libadbd_la_CPPFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 
-libadbd_la_LIBADD   := ../fs_mgr/libfs_mgr.la
-libadbd_la_LDFLAGS  := -lselinux -lcutils -lext4_utils -lmincrypt -lresolv -lbase
+libadbd_la_LDFLAGS  := -lpthread -lselinux -lresolv
+libadbd_la_LDFLAGS  += @GLIB_LIBS@ @LIBCUTILS_LIBS@ @FSMGR_LIBS@
+libadbd_la_LDFLAGS  += @LIBBASE_LIBS@ @MINCRYPT_LIBS@ @EXT4UTILS_LIBS@
 
 # Build adb daemon
 # Prefer adbd to be located in /sbin for historical reasons
@@ -53,11 +52,7 @@ adbd_SOURCES  += framebuffer_service.cpp
 adbd_SOURCES  += remount_service.cpp
 adbd_SOURCES  += set_verity_enable_state_service.cpp
 
-adbd_CPPFLAGS := -I$(top_srcdir)/include
-adbd_CPPFLAGS += -I$(top_srcdir)/base/include
-adbd_CPPFLAGS += -I$(top_srcdir)/fs_mgr/include
-adbd_CPPFLAGS += -I$(top_srcdir)/mkbootimg
-adbd_CPPFLAGS += $(GLIB_CFLAGS) -Dstrlcat=g_strlcat -Dstrlcpy=g_strlcpy -include glib.h
+adbd_CPPFLAGS := -I@core_incdir@/../mkbootimg @FSMGR_CFLAGS@
 adbd_CPPFLAGS += -Wall -Wno-unused-parameter
 adbd_CPPFLAGS += -Wno-deprecated-declarations
 adbd_CPPFLAGS += -std=c++14 -fpermissive
@@ -74,11 +69,13 @@ adbd_CPPFLAGS += -DALLOW_ADBD_ROOT=1
 endif
 adbd_CPPFLAGS += -DADB_REBOOT_ENABLED=1
 adbd_CPPFLAGS += -DALLOW_ADBD_DISABLE_VERITY=1
-adbd_CPPFLAGS += -DUSE_GLIB -Dstrlcat=g_strlcat @GLIB_CFLAGS@
+adbd_CPPFLAGS += -DUSE_GLIB -Dstrlcat=g_strlcat -Dstrlcpy=g_strlcpy @GLIB_CFLAGS@
+adbd_CPPFLAGS += @EXT4UTILS_CFLAGS@
 
 adbd_LDADD   := libadbd.la
-adbd_LDADD   += ../fs_mgr/libfs_mgr.la
-adbd_LDFLAGS := -lcutils -lresolv -lmincrypt -lselinux -lbase
+adbd_LDFLAGS := -lpthread -lresolv -lselinux
+adbd_LDFLAGS += @LIBLOG_LIBS@ @GLIB_LIBS@ @LIBCUTILS_LIBS@
+adbd_LDFLAGS += @LIBBASE_LIBS@ @FSMGR_LIBS@ @MINCRYPT_LIBS@
 endif
 
 # adb host tool for linux
@@ -90,14 +87,13 @@ lib_LTLIBRARIES := libadb.la
 libadb_la_SOURCES := $(adb_sources) $(adb_linux_sources)
 libadb_la_SOURCES += adb_auth_host.cpp
 
-libadbd_la_CPPFLAGS := -I$(top_srcdir)/include
-libadbd_la_CPPFLAGS += -I$(top_srcdir)/base/include
+libadbd_la_CPPFLAGS := -I$(top_srcdir) @LIBCUTILS_CFLAGS@
 libadbd_la_CPPFLAGS += -Wall -Wno-unused-parameter
 libadbd_la_CPPFLAGS += -std=c++14 -fpermissive
 libadbd_la_CPPFLAGS += -DADB_HOST
 libadbd_la_CPPFLAGS += -DADB_REVISION='"$(adb_version)"'
 libadbd_la_CPPFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-libadbd_la_LDFLAGS   = -lbase
+libadbd_la_LDFLAGS   = @LIBBASE_LIBS@
 
 # Build adb for linux
 #bin_PROGRAMS = adb

@@ -32,6 +32,9 @@
 #include "ext4_sb.h"
 #include "fs_mgr.h"
 #include "remount_service.h"
+#ifdef USE_GLIB
+#include <glib.h>
+#endif
 
 #include <stddef.h>
 #define FSTAB_PREFIX "/fstab."
