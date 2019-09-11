@@ -89,6 +89,8 @@ int __android_log_print(int prio, const char *tag, const char *fmt, ...)
 {
     va_list ap;
 
+    openlog(tag, LOG_NDELAY, LOG_USER);
+
     va_start(ap, fmt);
     vsyslog(logd2syslog(prio), fmt, ap);
     va_end(ap);
@@ -99,6 +101,8 @@ int __android_log_print(int prio, const char *tag, const char *fmt, ...)
 int __android_log_buf_print(int bufID, int prio, const char *tag, const char *fmt, ...)
 {
     va_list ap;
+
+    openlog(tag, LOG_NDELAY, LOG_USER);
 
     va_start(ap, fmt);
     vsyslog(logd2syslog(prio), fmt, ap);
