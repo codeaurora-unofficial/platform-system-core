@@ -26,7 +26,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-
+source /etc/initscripts/init_qti_debug
 configure_memory_parameters () {
     # Set Memory paremeters.
     #
@@ -134,6 +134,7 @@ configure_memory_parameters () {
 case "$1" in
 start)
 echo -n "Starting init_qcom_post_boot: "
+echo "++++ $0 -> Starting init_qcom_post_boot: " > /dev/kmsg
 if [ -f /sys/devices/soc0/machine ]; then
     target=`cat /sys/devices/soc0/machine | tr [:upper:] [:lower:]`
 else
@@ -380,6 +381,9 @@ case "$target" in
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
                 echo mem > /sys/power/autosleep
 
+                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
+                enable_qcs40x_debug
+                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
                 ;;
                 *)
                 ;;
@@ -473,6 +477,9 @@ case "$target" in
                 #VOICEUI module will take care of putting system in suspend mode.
                 #echo mem > /sys/power/autosleep
 
+                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
+                enable_qcs40x_debug
+                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
                 ;;
                 *)
                 ;;
