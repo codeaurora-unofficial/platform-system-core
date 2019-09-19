@@ -49,6 +49,8 @@ extern RecordStream *record_stream_new(int fd, size_t maxRecordLen)
     assert (maxRecordLen <= 0xffff);
 
     ret = (RecordStream *)calloc(1, sizeof(RecordStream));
+    if (ret == NULL)
+        return NULL;
 
     ret->fd = fd;
     ret->maxRecordLen = maxRecordLen;
