@@ -27,6 +27,10 @@ PKG_CHECK_MODULES([LIBBASE], [libbase])
 AC_SUBST([LIBBASE_CFLAGS])
 AC_SUBST([LIBBASE_LIBS])
 
+PKG_CHECK_MODULES([LIBLOG], [liblog])
+AC_SUBST([LIBLOG_CFLAGS])
+AC_SUBST([LIBLOG_LIBS])
+
 AC_ARG_WITH([glib],
       AC_HELP_STRING([--with-glib],
          [enable glib, building HLOS systems which use glib]))
