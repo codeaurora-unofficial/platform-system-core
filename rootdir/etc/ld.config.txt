@@ -262,9 +262,11 @@ namespace.default.visible = true
 
 namespace.default.search.paths  = /odm/${LIB}
 namespace.default.search.paths += /vendor/${LIB}
+namespace.default.search.paths += /mnt/vendor/persist/audio
 
 namespace.default.permitted.paths  = /odm
 namespace.default.permitted.paths += /vendor
+namespace.default.permitted.paths += /mnt/vendor/persist/audio
 
 namespace.default.asan.search.paths  = /data/asan/odm/${LIB}
 namespace.default.asan.search.paths +=           /odm/${LIB}
