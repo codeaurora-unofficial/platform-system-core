@@ -11,7 +11,3 @@ usb_composition_switch_CFLAGS = -O2 \
                                 -Wall \
                                 -Wno-unused-parameter \
                                 -fstack-protector-strong
-
-usbhost_includedir=$(includedir)/usbhost
-usbhost_include_HEADERS := $(top_srcdir)/include/usbhost/usbhost.h
-
