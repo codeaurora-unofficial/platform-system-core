@@ -82,7 +82,6 @@ case "$1" in
 		mkdir functions/gsi.rndis
 		mkdir functions/gsi.ecm
 		mkdir functions/gsi.mbim
-		mkdir functions/gsi.rmnet.v2x
 		mkdir functions/gsi.dpl
 		mkdir functions/gsi.gps
 		mkdir functions/ncm.0
@@ -91,9 +90,23 @@ case "$1" in
 		mkdir functions/uac1.uac1
 		mkdir functions/uac2.0
 		mkdir functions/uvc.0
-		mkdir functions/rndis.rndis
-		mkdir functions/ipc.ipc
-		mkdir functions/ecm.ecm
+
+		# Target based instances
+		case `source /sbin/usb/target` in
+			*sdxpoorwills* | *sdxprairie* )
+				mkdir functions/gsi.rmnet.v2x
+				mkdir functions/rndis.rndis
+				mkdir functions/ipc.ipc
+				mkdir functions/ecm.ecm
+				;;
+			*sa2150p* )
+				mkdir functions/mdm_data.qdss
+				echo 1 > functions/mdm_data.qdss/in_ep
+				mkdir functions/mdm_data.dpl
+				echo 1 > functions/mdm_data.dpl/in_ep
+				;;
+		esac
+
 		if [ ! -s "/etc/adb_devid" ]
 		then
 			echo $serialno > /etc/adb_devid
@@ -109,7 +122,6 @@ case "$1" in
 			/sbin/restorecon /dev/at_usb0 /dev/at_usb1
 		fi
 
-		setprop sys.usb.configfs 1
 		cd /
 	fi
 
