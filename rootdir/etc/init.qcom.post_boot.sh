@@ -479,6 +479,22 @@ case "$target" in
 esac
 
 case "$target" in
+    "sa8195p" )
+        # Set the min supported frequencies
+        echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
+        echo 4 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel
+        echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
+        ;;
+esac
+
+case "$target" in
     "msm8917" | "apq8017")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
