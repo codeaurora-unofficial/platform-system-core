@@ -26,7 +26,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-
+source /etc/initscripts/init_qti_debug
 configure_memory_parameters () {
     # Set Memory paremeters.
     #
@@ -134,6 +134,7 @@ configure_memory_parameters () {
 case "$1" in
 start)
 echo -n "Starting init_qcom_post_boot: "
+echo "++++ $0 -> Starting init_qcom_post_boot: " > /dev/kmsg
 if [ -f /sys/devices/soc0/machine ]; then
     target=`cat /sys/devices/soc0/machine | tr [:upper:] [:lower:]`
 else
@@ -286,7 +287,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS405" | "qcs405")
+    "QCS405" | "qcs405" | "QCS404" | "qcs404" | "QCS407" | "qcs407")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -300,7 +301,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "352" )
+           "352" | "410" | "411")
 
                 #disable sched_boost in qcs405
                 if [ -f /proc/sys/kernel/sched_boost ]; then
@@ -374,10 +375,15 @@ case "$target" in
 		# Keep L2-retention disabled
 		echo N > /sys/module/lpm_levels/perf/perf-l2-retention/idle_enabled
 		echo N > /sys/module/lpm_levels/perf/perf-l2-retention/suspend_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/idle_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/suspend_enabled
 
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
                 echo mem > /sys/power/autosleep
 
+                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
+                enable_qcs40x_debug
+                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
                 ;;
                 *)
                 ;;
@@ -386,7 +392,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS403" | "qcs403")
+    "QCS403" | "qcs403" | "QCS401" | "qcs401")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -400,7 +406,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "373" )
+           "373" | "372")
 
                 #disable sched_boost in qcs403
                 if [ -f /proc/sys/kernel/sched_boost ]; then
@@ -471,6 +477,9 @@ case "$target" in
                 #VOICEUI module will take care of putting system in suspend mode.
                 #echo mem > /sys/power/autosleep
 
+                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
+                enable_qcs40x_debug
+                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
                 ;;
                 *)
                 ;;
