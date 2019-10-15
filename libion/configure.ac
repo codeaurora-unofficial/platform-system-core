@@ -18,6 +18,10 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
 
+PKG_CHECK_MODULES([LIBLOG], [liblog])
+AC_SUBST([LIBLOG_CFLAGS])
+AC_SUBST([LIBLOG_LIBS])
+
 AC_ARG_WITH([core_includes],
     AC_HELP_STRING([--with-core-includes=@<:@dir@:>@],
        [Specify the location of the core headers]),
