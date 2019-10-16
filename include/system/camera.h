@@ -21,7 +21,7 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <hardware/hardware.h>
-#ifndef __LIBGBM__
+#ifndef USE_GBM
 #include <cutils/native_handle.h>
 #include <hardware/gralloc.h>
 #endif
