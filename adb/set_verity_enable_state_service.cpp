@@ -194,6 +194,7 @@ void set_verity_enabled_state_service_le(int fd, void* cookie)
         WriteFdFmt(fd, "%s-verity only works for userdebug builds\n",
                    enable ? "enable" : "disable");
     }
+    adb_close(fd);
 }
 void set_verity_enabled_state_service(int fd, void* cookie)
 {

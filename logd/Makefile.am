@@ -23,9 +23,6 @@ logd_CPPFLAGS += -std=c++14 -std=gnu++14
 logd_CPPFLAGS += -fpermissive -fms-extensions
 logd_CPPFLAGS += -DAUDITD_LOG_TAG=1003 -DLOGD_LOG_TAG=1004
 logd_CPPFLAGS += -DHAVE_ANDROID_OS
-if LOGDPRIVS
-logd_CPPFLAGS += -DLOGD_DROP_PRIVS
-endif
 
 logd_LDADD  = ../libsysutils/libsysutils.la
 logd_LDFLAGS = -llog -lcutils -lbase -lpthread -lutils

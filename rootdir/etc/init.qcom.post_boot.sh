@@ -26,7 +26,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-
+source /etc/initscripts/init_qti_debug
 configure_memory_parameters () {
     # Set Memory paremeters.
     #
@@ -134,6 +134,7 @@ configure_memory_parameters () {
 case "$1" in
 start)
 echo -n "Starting init_qcom_post_boot: "
+echo "++++ $0 -> Starting init_qcom_post_boot: " > /dev/kmsg
 if [ -f /sys/devices/soc0/machine ]; then
     target=`cat /sys/devices/soc0/machine | tr [:upper:] [:lower:]`
 else
@@ -286,7 +287,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS405" | "qcs405")
+    "QCS405" | "qcs405" | "QCS404" | "qcs404" | "QCS407" | "qcs407")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -300,7 +301,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "352" )
+           "352" | "410" | "411")
 
                 #disable sched_boost in qcs405
                 if [ -f /proc/sys/kernel/sched_boost ]; then
@@ -371,9 +372,18 @@ case "$target" in
                 echo 1 > /sys/devices/system/cpu/cpu3/online
 
                 # Enable low power modes
+		# Keep L2-retention disabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-retention/idle_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-retention/suspend_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/idle_enabled
+		echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/suspend_enabled
+
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
                 echo mem > /sys/power/autosleep
 
+                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
+                enable_qcs40x_debug
+                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
                 ;;
                 *)
                 ;;
@@ -382,7 +392,7 @@ case "$target" in
 esac
 
 case "$target" in
-    "QCS403" | "qcs403")
+    "QCS403" | "qcs403" | "QCS401" | "qcs401")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -396,7 +406,7 @@ case "$target" in
         fi
 
         case "$soc_id" in
-           "373" )
+           "373" | "372")
 
                 #disable sched_boost in qcs403
                 if [ -f /proc/sys/kernel/sched_boost ]; then
@@ -467,6 +477,9 @@ case "$target" in
                 #VOICEUI module will take care of putting system in suspend mode.
                 #echo mem > /sys/power/autosleep
 
+                echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
+                enable_qcs40x_debug
+                echo "++++ $0 -> Debug QCS40X - END" > /dev/kmsg
                 ;;
                 *)
                 ;;
@@ -1123,6 +1136,114 @@ case "$target" in
             echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
             ;;
         esac
+    ;;
+esac
+
+case "$target" in
+    "sda845" | "sdm845")
+
+        # Set the default IRQ affinity to the silver cluster. When a
+        # CPU is isolated/hotplugged, the IRQ affinity is adjusted
+        # to one of the CPU from the default IRQ affinity mask.
+        echo f > /proc/irq/default_smp_affinity
+
+        # Core control parameters
+        echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+        echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
+        echo 30 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
+        echo 100 > /sys/devices/system/cpu/cpu4/core_ctl/offline_delay_ms
+        echo 1 > /sys/devices/system/cpu/cpu4/core_ctl/is_big_cluster
+        echo 4 > /sys/devices/system/cpu/cpu4/core_ctl/task_thres
+
+        # Setting b.L scheduler parameters
+        echo 95 > /proc/sys/kernel/sched_upmigrate
+        echo 85 > /proc/sys/kernel/sched_downmigrate
+        echo 100 > /proc/sys/kernel/sched_group_upmigrate
+        echo 95 > /proc/sys/kernel/sched_group_downmigrate
+        echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
+
+        # configure governor settings for little cluster
+        echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+        #echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/rate_limit_us
+        echo 1209600 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_freq
+        echo 1 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/pl
+        echo 576000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+
+        # configure governor settings for big cluster
+        echo "schedutil" > /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor
+        #echo 0 > /sys/devices/system/cpu/cpu4/cpufreq/schedutil/rate_limit_us
+        echo 1574400 > /sys/devices/system/cpu/cpu4/cpufreq/schedutil/hispeed_freq
+        echo 1 > /sys/devices/system/cpu/cpu4/cpufreq/schedutil/pl
+        echo "0:1324800" > /sys/module/cpu_boost/parameters/input_boost_freq
+        echo 120 > /sys/module/cpu_boost/parameters/input_boost_ms
+        # Limit the min frequency to 825MHz
+        echo 825000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+
+        # Enable oom_reaper
+        echo 1 > /sys/module/lowmemorykiller/parameters/oom_reaper
+
+        # Enable bus-dcvs
+        for cpubw in /sys/class/devfreq/*qcom,cpubw*
+        do
+            echo "bw_hwmon" > $cpubw/governor
+            echo 50 > $cpubw/polling_interval
+            echo "2288 4577 6500 8132 9155 10681" > $cpubw/bw_hwmon/mbps_zones
+            echo 4 > $cpubw/bw_hwmon/sample_ms
+            echo 50 > $cpubw/bw_hwmon/io_percent
+            echo 20 > $cpubw/bw_hwmon/hist_memory
+            echo 10 > $cpubw/bw_hwmon/hyst_length
+            echo 0 > $cpubw/bw_hwmon/guard_band_mbps
+            echo 250 > $cpubw/bw_hwmon/up_scale
+            echo 1600 > $cpubw/bw_hwmon/idle_mbps
+        done
+
+        for llccbw in /sys/class/devfreq/*qcom,llccbw*
+        do
+            echo "bw_hwmon" > $llccbw/governor
+            echo 50 > $llccbw/polling_interval
+            echo "1720 2929 3879 5931 6881" > $llccbw/bw_hwmon/mbps_zones
+            echo 4 > $llccbw/bw_hwmon/sample_ms
+            echo 80 > $llccbw/bw_hwmon/io_percent
+            echo 20 > $llccbw/bw_hwmon/hist_memory
+            echo 10 > $llccbw/bw_hwmon/hyst_length
+            echo 0 > $llccbw/bw_hwmon/guard_band_mbps
+            echo 250 > $llccbw/bw_hwmon/up_scale
+            echo 1600 > $llccbw/bw_hwmon/idle_mbps
+        done
+
+        #Enable mem_latency governor for DDR scaling
+        for memlat in /sys/class/devfreq/*qcom,memlat-cpu*
+        do
+        echo "mem_latency" > $memlat/governor
+        echo 10 > $memlat/polling_interval
+        echo 400 > $memlat/mem_latency/ratio_ceil
+        done
+
+        #Enable mem_latency governor for L3 scaling
+        for memlat in /sys/class/devfreq/*qcom,l3-cpu*
+        do
+            echo "mem_latency" > $memlat/governor
+            echo 10 > $memlat/polling_interval
+            echo 400 > $memlat/mem_latency/ratio_ceil
+        done
+
+        #Enable userspace governor for L3 cdsp nodes
+        for l3cdsp in /sys/class/devfreq/*qcom,l3-cdsp*
+        do
+            echo "userspace" > $l3cdsp/governor
+            chown -h system $l3cdsp/userspace/set_freq
+        done
+
+        #Gold L3 ratio ceil
+        echo 4000 > /sys/class/devfreq/soc:qcom,l3-cpu4/mem_latency/ratio_ceil
+
+        echo "compute" > /sys/class/devfreq/soc:qcom,mincpubw/governor
+        echo 10 > /sys/class/devfreq/soc:qcom,mincpubw/polling_interval
+
+        # Enable all LPMs by default
+        echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+
+        echo 100 > /proc/sys/vm/swappiness
     ;;
 esac
 
