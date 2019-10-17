@@ -50,6 +50,10 @@ extern RecordStream *record_stream_new(int fd, size_t maxRecordLen)
 
     ret = (RecordStream *)calloc(1, sizeof(RecordStream));
 
+    if (ret == NULL) {
+        return NULL;
+    }
+
     ret->fd = fd;
     ret->maxRecordLen = maxRecordLen;
     ret->buffer = (unsigned char *)malloc (maxRecordLen + HEADER_SIZE);
