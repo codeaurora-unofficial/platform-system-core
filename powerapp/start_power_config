@@ -146,7 +146,7 @@ case "$1" in
          esac
 
          case "$soc_id" in
-         "334" )
+         "334" | "408")
                 echo -n "Starting powerconfig for SDX24: "
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
                 #CPU Governor settings
