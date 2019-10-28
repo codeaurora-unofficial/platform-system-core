@@ -215,7 +215,7 @@ int main(int argc, char **argv)
     }
     /* Even if we need to use the supplemental field, ensure we
      * are still NULL-terminated */
-    strlcpy((char *)hdr.cmdline, cmdline, BOOT_ARGS_SIZE - 1);
+    strlcpy((char *)hdr.cmdline, cmdline, BOOT_ARGS_SIZE);
     hdr.cmdline[BOOT_ARGS_SIZE - 1] = '\0';
     if (cmdlen >= (BOOT_ARGS_SIZE - 1)) {
         cmdline += (BOOT_ARGS_SIZE - 1);
