@@ -1,5 +1,5 @@
 #! /bin/sh
-# Copyright (c) 2009-2011, 2016 The Linux Foundation. All rights reserved.
+# Copyright (c) 2009-2011, 2016, 2019 The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -575,10 +575,8 @@ case "$target" in
         echo 5 > /proc/sys/vm/dirty_background_ratio
 
         # Set panic as hung and keep SLPI alive during panic
-        if [ -f /proc/sys/kernel/panic ]; then
+        if [ -f /proc/sys/kernel/panic ] && [ -f /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive ]; then
                 echo 0 > /proc/sys/kernel/panic
-        fi
-        if [ -f /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive ]; then
                 echo 1 > /sys/devices/soc/1c00000.qcom,ssc/subsys4/keep_alive
         fi
 
