@@ -306,7 +306,7 @@ case "$1" in
          esac
 
         case "$soc_id" in
-	"357" | "368")
+	"357" | "368" | "418")
                 echo -n "Starting powerconfig for SDX55: "
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
                 echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
