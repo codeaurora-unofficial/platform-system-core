@@ -36,6 +36,17 @@
 #define __unused  __attribute__((__unused__))
 #endif
 
+// For gettid.
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <syscall.h>
+#include <unistd.h>
+
+// No definition needed for Android because we'll just pick up bionic's copy.
+pid_t gettid() {
+  return syscall(__NR_gettid);
+}
+#endif  // __ANDROID__
+
 static const int msg_id[] = {
     LOG_INFO,    // ANDROID_LOG_UNKNOWN  = 0,
     LOG_WARNING,  // ANDROID_LOG_DEFAULT  = 1,
