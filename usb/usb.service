@@ -28,7 +28,7 @@
 [Unit]
 SourcePath=/etc/initscripts/usb
 Description=usb Service
-After=start_stop_ipa_fws.service
+After=sysinit.target start_stop_ipa_fws.service
 DefaultDependencies=no
 
 [Service]
