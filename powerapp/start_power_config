@@ -314,7 +314,11 @@ case "$1" in
 
                 echo mem > /sys/power/autosleep
                 echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
-
+                echo 100 > /proc/sys/vm/swappiness
+                echo lz4 > /sys/block/zram0/comp_algorithm
+                echo 104857600 > /sys/block/zram0/disksize
+                mkswap /dev/zram0
+                swapon /dev/zram0
 		echo "++++ $0 -> ENABLE-FTRACE START" > /dev/kmsg
 		#Enable FTRACE_ENABLE on SDX55
 		#bail out if its perf config
