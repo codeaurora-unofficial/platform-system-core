@@ -371,5 +371,10 @@ case "$1" in
         ;;
 esac
 
+if [ -e /etc/init.d/find_recovery_partitions.sh ]; then
+    echo -n "In recovery mode; turning off autosleep.." > /dev/kmsg
+    echo off > /sys/power/autosleep
+fi
+
 exit 0
 
