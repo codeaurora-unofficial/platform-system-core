@@ -287,6 +287,47 @@ configure_sa6155_sku_parameters() {
     fi
 }
 
+configure_sa8195_sku_parameters() {
+    reg_val=`cat /sys/devices/platform/soc/780130.qfprom/qfprom0/nvmem | od -An -t d4`
+    feature_id=$(((reg_val >> 20) & 0xFF))
+
+    echo "Feature ID is " $feature_id
+
+    if [ $feature_id == 1 ]; then
+        echo "SKU Configured : SA8195P"
+        echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
+        # Setting min gpu freq to 392 MHz
+        echo 4 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel
+        # Setting max gpu freq to 670 MHz
+        echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
+        echo {class:ddr, res:fixed, val:2092} > /sys/kernel/debug/aop_send_message
+    elif [ $feature_id == 0 ]; then
+        echo "SKU Configured : SA8185P"
+        echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
+        echo 1113600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
+        echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
+        # Setting min gpu freq to 392 MHz
+        echo 4 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel
+        # Setting max gpu freq to 530 MHz
+        echo 3 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
+        echo {class:ddr, res:fixed, val:1804} > /sys/kernel/debug/aop_send_message
+    else
+        echo "Unknown SKU"
+    fi
+}
+
 case "$1" in
 start)
 if [ -f /sys/devices/soc0/machine ]; then
@@ -480,18 +521,7 @@ esac
 
 case "$target" in
     "sa8195p" )
-        # Set the min supported frequencies
-        echo 1113600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-        echo 1113600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq
-        echo 1113600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq
-        echo 1113600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq
-        echo 1171200 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
-        echo 1171200 > /sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq
-        echo 1171200 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
-        echo 1171200 > /sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq
-        echo 4 > /sys/class/kgsl/kgsl-3d0/min_pwrlevel
-        echo 0 > /sys/class/kgsl/kgsl-3d0/max_pwrlevel
-        ;;
+    configure_sa8195_sku_parameters
 esac
 
 case "$target" in
