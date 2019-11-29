@@ -104,6 +104,9 @@ case "$1" in
 				echo 1 > functions/mdm_data.qdss/in_ep
 				mkdir functions/mdm_data.dpl
 				echo 1 > functions/mdm_data.dpl/in_ep
+				mkdir functions/mdm_data.edl
+				echo 1 > functions/mdm_data.edl/in_ep
+				echo 1 > functions/mdm_data.edl/out_ep
 				;;
 		esac
 
