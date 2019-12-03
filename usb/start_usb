@@ -171,7 +171,19 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*sdxpoorwills* | *sdxprairie* )
+		*sdxpoorwills* )
+			# Check if device is ADP with PCIe fusion
+			if [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "1" ]; then
+				echo 9104 > /etc/usb/boot_hsusb_comp
+			# Check if device is ADP with USB fusion
+			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "2" ]; then
+				echo 9102 > /etc/usb/boot_hsusb_comp
+			# Use this for MTP/TTP in PCIe mode
+			elif [ -e /dev/mhi_ctrl ]; then
+				echo 901F > /etc/usb/boot_hsusb_comp
+			fi
+			;;
+		*sdxprairie* )
 			if [ -e /dev/mhi_ctrl ]; then
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
