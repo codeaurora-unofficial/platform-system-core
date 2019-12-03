@@ -20,9 +20,11 @@
 #include <stdint.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
-#include <cutils/native_handle.h>
 #include <hardware/hardware.h>
+#ifndef USE_GBM
+#include <cutils/native_handle.h>
 #include <hardware/gralloc.h>
+#endif
 
 __BEGIN_DECLS
 
