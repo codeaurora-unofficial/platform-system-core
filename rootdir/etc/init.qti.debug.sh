@@ -39,7 +39,7 @@ enable_qcs40x_debug()
 	fi
 
 	echo 0 > $DCC_PATH/enable
-	echo 2 > $DCC_PATH/curr_list
+	echo 1 > $DCC_PATH/curr_list
 	echo cap > $DCC_PATH/func_type
 	echo sram > $DCC_PATH/data_sink
 	echo 1 > $DCC_PATH/config_reset
