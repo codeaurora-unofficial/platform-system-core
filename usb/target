@@ -69,6 +69,9 @@ case `cat ${TARGET_DIR}` in
 	*605* )
 		res="qcs605";
                 ;;
+	*sdmsteppe* )
+		res="qcs610";
+                ;;
         *405* | *403* )
                 res="qcs40x";
 		;;
