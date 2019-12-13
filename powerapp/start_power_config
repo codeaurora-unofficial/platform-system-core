@@ -34,11 +34,18 @@ set -e
 case "$1" in
   start)
         soc_id=`cat /sys/devices/soc0/soc_id`
-
+	ker_ver=`uname -r | cut -c 1-4`
 	case "$soc_id" in
 	"290" | "296" | "297" | "298" | "299" | "322")
-		echo -n "Starting powerconfig for mdm9607: "
-
+	if [ "$ker_ver" == "4.14" ]
+	then
+		echo -n "Starting powerconfig for mdm9607: with Kernel $ker_ver "
+		echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+		echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+		# Enable Low Power modes
+		echo 0 > /sys/module/lpm_levels_legacy/parameters/sleep_disabled
+	else
+		echo -n "Starting powerconfig for mdm9607: with Kernel $ker_ver "
 		echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 		echo 40000 > /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
 		echo 80 > /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
@@ -47,10 +54,11 @@ case "$1" in
 		echo 40000 > /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
 		echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 		echo mem > /sys/power/autosleep
-
 		# Enable Low Power modes
+
 		echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-		;;
+	fi
+	;;
 	esac
 
         case "$soc_id" in
