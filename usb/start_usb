@@ -293,6 +293,14 @@ case "$1" in
 	if [ -d /sys/class/android_usb/android0 ]
 	then
 		pid=`cat /etc/usb/boot_hsusb_comp`
+		case `source /sbin/usb/target` in
+			*sdxprairie* )
+				if [ -f "/sys/firmware/devicetree/base/soc/qcom,mss@4080000/qcom,auto-boot" ]
+				then
+					pid="90F0"
+				fi
+				;;
+		esac
 		# make 901D as default composition
                 if [ -z "$pid" ]
 		then
