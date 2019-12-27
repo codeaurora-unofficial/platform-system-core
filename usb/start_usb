@@ -82,10 +82,12 @@ case "$1" in
 		mkdir functions/cser.dun.0
 		mkdir functions/gser.0
 		mkdir functions/rmnet_bam.rmnet_bam_dmux
+		mkdir functions/rndis.rndis
 		echo "$serialno" > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
 		echo "$socplatform" > strings/0x409/product
 		setprop sys.usb.configfs 1
+		cd /
 	fi
 
 	# mount functionfs
