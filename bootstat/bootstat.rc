@@ -74,3 +74,11 @@ on property:sys.boot_completed=1 && property:sys.logbootcomplete=1
     # Record time since factory reset.
     # Log all boot events.
     exec_background - system log -- /system/bin/bootstat --set_system_boot_reason --record_boot_complete --record_boot_reason --record_time_since_factory_reset -l
+
+on property:diag.svc.initialized=true && property:def_diag_on=false && property:diag_started=false
+    exec u:r:shell:s0 shell log -- /system/bin/sh /system/bin/am force-stop com.qti.diagservices
+    setprop diag_started true
+
+on property:nfc.initialized=true && property:def_nfc_on=false && property:nfc_started=false
+    exec u:r:shell:s0 shell log -- /system/bin/sh /system/bin/am force-stop com.android.nfc
+    setprop nfc_started true
