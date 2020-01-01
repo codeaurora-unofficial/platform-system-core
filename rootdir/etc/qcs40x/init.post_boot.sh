@@ -1,6 +1,6 @@
 #! /bin/sh
-# Copyright (c) 2009-2019, The Linux Foundation. All rights reserved.
-
+# Copyright (c) 2009-2020, The Linux Foundation. All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
@@ -13,7 +13,7 @@
 #     * Neither the name of The Linux Foundation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
-
+#
 # THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
@@ -27,8 +27,8 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-source /etc/initscripts/init_qti_debug
-echo -n "Starting init_qcom_post_boot: "
+echo -n "Starting post boot settings "
+echo "++++ $0 -> Starting post boot settings " > /dev/kmsg
 
 emmc_boot=`getprop ro.boot.emmc`
 case "$emmc_boot"
@@ -47,7 +47,7 @@ else
 fi
 
 case "$target" in
-    "QCS405" | "qcs405" | "QCS404" | "qcs404" | "QCS407" | "qcs407")
+    "qcs405" | "qcs404" | "qcs407")
         if [ -f /sys/devices/soc0/soc_id ]; then
             soc_id=`cat /sys/devices/soc0/soc_id`
         else
@@ -59,6 +59,8 @@ case "$target" in
         else
             hw_platform=`cat /sys/devices/system/soc/soc0/hw_platform`
         fi
+
+        source /etc/initscripts/init_qti_debug
 
         case "$soc_id" in
            "352" | "410" | "411")
@@ -151,4 +153,5 @@ case "$target" in
     ;;
 esac
 
-echo "init_qcom_post_boot completed"
+echo "post boot settings completed"
+echo "++++ $0 -> post boot settings completed" > /dev/kmsg

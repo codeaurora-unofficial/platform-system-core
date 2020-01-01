@@ -1,0 +1,2 @@
+# Build subfolders
+SUBDIRS = etc
