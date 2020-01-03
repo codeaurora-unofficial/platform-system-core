@@ -76,8 +76,8 @@ on property:sys.boot_completed=1 && property:sys.logbootcomplete=1
     # Log all boot events.
     exec - system log -- /system/bin/bootstat -l
 
-on property:sys.boot_completed=1 && property:def_diag_on=false
-    exec /system/bin/am force-stop com.qti.diagservices
+on property:diag.svc.initialized=true && property:def_diag_on=false
+    exec u:r:shell:s0 shell log -- /system/bin/sh /system/bin/am force-stop com.qti.diagservices
 
-on property:sys.boot_completed=1 && property:def_nfc_on=false
-    exec /system/bin/am force-stop com.android.nfc
+on property:nfc.initialized=true && property:def_nfc_on=false
+    exec u:r:shell:s0 shell log -- /system/bin/sh /system/bin/am force-stop com.android.nfc
