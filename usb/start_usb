@@ -53,13 +53,8 @@ case "$1" in
 	echo "soc:" $socplatform
 
 	# find serialno from cmdline
-	cmdline=`cat /proc/cmdline` 2> /dev/null
-	strsearch="androidboot.serialno="
-	if echo "$cmdline" | grep -q "$strsearch"; then
-		startsearch=${cmdline#*$strsearch}
-		pos=$(( ${#cmdline} - ${#startsearch}))
-		serialno=${cmdline:$pos:8}
-	else
+	serialno=`cat /proc/cmdline | grep -o "androidboot.serialno=[A-Za-z0-9]*" | cut -d "=" -f2`
+	if [ "$serialno" == "" ]; then
 		echo "serialno not found with cmdline, use default"
 		serialno="12345678"
 	fi
