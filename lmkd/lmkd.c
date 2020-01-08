@@ -83,6 +83,8 @@
 #define MEMCG_MEMORYSW_USAGE "/dev/memcg/memory.memsw.usage_in_bytes"
 #define ZONEINFO_PATH "/proc/zoneinfo"
 #define MEMINFO_PATH "/proc/meminfo"
+#define PROC_STATUS_TGID_FIELD "Tgid:"
+#define TRACE_MARKER_PATH "/sys/kernel/debug/tracing/trace_marker"
 #define LINE_MAX 128
 #define MAX_NR_ZONES 6
 
@@ -587,6 +589,49 @@ static inline long get_time_diff_ms(struct timespec *from,
            (to->tv_nsec - from->tv_nsec) / (long)NS_PER_MS;
 }
 
+static int proc_get_tgid(int pid) {
+    char path[PATH_MAX];
+    char buf[PAGE_SIZE];
+    int fd;
+    ssize_t size;
+    char *pos;
+    int64_t tgid = -1;
+
+    snprintf(path, PATH_MAX, "/proc/%d/status", pid);
+    fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+        return -1;
+    }
+
+    size = read_all(fd, buf, sizeof(buf) - 1);
+    if (size < 0) {
+        goto out;
+    }
+    buf[size] = 0;
+
+    pos = buf;
+    while (true) {
+        pos = strstr(pos, PROC_STATUS_TGID_FIELD);
+        /* Stop if TGID tag not found or found at the line beginning */
+        if (pos == NULL || pos == buf || pos[-1] == '\n') {
+            break;
+        }
+        pos++;
+    }
+
+    if (pos == NULL) {
+        goto out;
+    }
+
+    pos += strlen(PROC_STATUS_TGID_FIELD);
+    while (*pos == ' ') pos++;
+    parse_int64(pos, &tgid);
+
+out:
+    close(fd);
+    return (int)tgid;
+}
+
 static void cmd_procprio(LMKD_CTRL_PACKET packet) {
     struct proc *procp;
     char path[80];
@@ -595,12 +640,21 @@ static void cmd_procprio(LMKD_CTRL_PACKET packet) {
     struct lmk_procprio params;
     bool is_system_server;
     struct passwd *pwdrec;
+    int tgid;
 
     lmkd_pack_get_procprio(packet, &params);
 
     if (params.oomadj < OOM_SCORE_ADJ_MIN ||
         params.oomadj > OOM_SCORE_ADJ_MAX) {
         ALOGE("Invalid PROCPRIO oomadj argument %d", params.oomadj);
+        return;
+    }
+
+    /* Check if registered process is a thread group leader */
+    tgid = proc_get_tgid(params.pid);
+    if (tgid >= 0 && tgid != params.pid) {
+        ALOGE("Attempt to register a task that is not a thread group leader (tid %d, tgid %d)",
+            params.pid, tgid);
         return;
     }
 
@@ -1331,6 +1385,42 @@ static int parse_one_zone_watermark(char *buf, struct watermark_info *w)
     return ret;
 }
 
+static void trace_log(char *fmt, ...)
+{
+    char buf[PAGE_SIZE];
+    va_list ap;
+    static int fd = -1;
+    ssize_t len, ret;
+
+    if (fd < 0) {
+	    fd = open(TRACE_MARKER_PATH, O_WRONLY | O_CLOEXEC);
+	    if (fd < 0) {
+		    ALOGE("Error opening " TRACE_MARKER_PATH "; errno=%d",
+				    errno);
+		    return;
+	    }
+    }
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    len = strlen(buf);
+    ret = TEMP_FAILURE_RETRY(write(fd, buf, len));
+    if (ret < 0) {
+	    ALOGE("Error writing " TRACE_MARKER_PATH ";errno=%d", errno);
+	    close(fd);
+	    fd = -1;
+	    return;
+    } else if (ret < len) {
+	    ALOGE("Short write on " TRACE_MARKER_PATH "; length=%zd", ret);
+    }
+}
+
+#define ULMK_LOG(X, fmt...) ({ \
+		ALOG##X(fmt);  \
+		trace_log(fmt); \
+		})
 static int file_cache_to_adj(int nr_file)
 {
     int min_score_adj = OOM_SCORE_ADJ_MAX + 1;
@@ -1344,7 +1434,7 @@ static int file_cache_to_adj(int nr_file)
             break;
         }
     }
-    ALOGE("adj: %d file_cache: %d\n", min_score_adj, nr_file);
+    ULMK_LOG(E, "adj: %d file_cache: %d\n", min_score_adj, nr_file);
     return min_score_adj;
 }
 
@@ -1380,7 +1470,7 @@ static int zone_watermarks_ok()
             break;
 
         offset += nr;
-        ALOGD("Zone %s: free:%d high:%d cma:%d reserve:(%d %d %d) anon:(%d %d) file:(%d %d)\n",
+        ULMK_LOG(D, "Zone %s: free:%d high:%d cma:%d reserve:(%d %d %d) anon:(%d %d) file:(%d %d)\n",
                 w.name, w.free, w.high, w.cma,
                 w.lowmem_reserve[0], w.lowmem_reserve[1], w.lowmem_reserve[2],
                 w.inactive_anon, w.active_anon, w.inactive_file, w.active_file);
@@ -1717,6 +1807,7 @@ static int last_killed_pid = -1;
 static int kill_one_process(struct proc* procp, int min_oom_score) {
     int pid = procp->pid;
     uid_t uid = procp->uid;
+    int tgid;
     char *taskname;
     long tasksize;
     int r;
@@ -1729,6 +1820,12 @@ static int kill_one_process(struct proc* procp, int min_oom_score) {
     /* To prevent unused parameter warning */
     (void)(min_oom_score);
 #endif
+
+    tgid = proc_get_tgid(pid);
+    if (tgid >= 0 && tgid != pid) {
+        ALOGE("Possible pid reuse detected (pid %d, tgid %d)!", pid, tgid);
+        goto out;
+    }
 
     taskname = proc_get_name(pid);
     if (!taskname) {
@@ -1758,7 +1855,7 @@ static int kill_one_process(struct proc* procp, int min_oom_score) {
     set_process_group_and_prio(pid, SP_FOREGROUND, ANDROID_PRIORITY_HIGHEST);
 
     inc_killcnt(procp->oomadj);
-    ALOGE("Kill '%s' (%d), uid %d, oom_adj %d to free %ldkB", taskname, pid, uid, procp->oomadj,
+    ULMK_LOG(E, "Kill '%s' (%d), uid %d, oom_adj %d to free %ldkB", taskname, pid, uid, procp->oomadj,
           tasksize * page_k);
 
     TRACE_KILL_END();
@@ -2108,7 +2205,7 @@ do_kill:
                 /* Free up enough memory to downgrate the memory pressure to low level */
                 if (mi.field.nr_free_pages >= low_pressure_mem.max_nr_free_pages) {
                     if (debug_process_killing) {
-                        ALOGI("Ignoring pressure since more memory is "
+                        ULMK_LOG(I, "Ignoring pressure since more memory is "
                             "available (%" PRId64 ") than watermark (%" PRId64 ")",
                             mi.field.nr_free_pages, low_pressure_mem.max_nr_free_pages);
                     }
@@ -2119,7 +2216,7 @@ do_kill:
                 min_score_adj = zone_watermarks_ok();
                 if (min_score_adj == OOM_SCORE_ADJ_MAX + 1)
 		        {
-                    ALOGI("Ignoring pressure since per-zone watermarks ok");
+                    ULMK_LOG(I, "Ignoring pressure since per-zone watermarks ok");
                     return;
                 }
             }
@@ -2380,7 +2477,7 @@ static void mainloop(void) {
             if (get_time_diff_ms(&last_report_tm, &curr_tm) >= PSI_POLL_PERIOD_MS) {
                 polling--;
                 poll_handler->handler(poll_handler->data, 0);
-                last_report_tm = curr_tm;
+                clock_gettime(CLOCK_MONOTONIC_COARSE, &last_report_tm);
             }
         } else {
             /* Wait for events with no timeout */
