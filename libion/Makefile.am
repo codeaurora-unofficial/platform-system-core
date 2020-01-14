@@ -44,7 +44,7 @@ endif
 iontest_LDFLAGS := -llog
 
 # Export headers
-ion_includedir=$(includedir)/ion_headers/ion
+ion_includedir=$(includedir)/ion
 ion_include_HEADERS := $(top_srcdir)/include/ion/ion.h
 
 pkgconfigdir := $(libdir)/pkgconfig
