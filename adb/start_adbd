@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2011, The Linux Foundation. All rights reserved.
+# Copyright (c) 2011,2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -56,6 +56,12 @@ case "$1" in
                 fi
                     cat /sys/class/android_usb/android0/iSerial > /data/adb_devid
         fi
+
+# If UDC is not set up set it up
+if [ -z /sys/kernel/config/usb_gadget/g1/UDC ]; then
+	udcname=`ls -1 /sys/class/udc | head -n 1`
+	echo $udcname > /sys/kernel/config/usb_gadget/g1/UDC
+fi
         echo "done" > /dev/kmsg
         ;;
   stop)
