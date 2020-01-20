@@ -104,6 +104,9 @@ case "$1" in
 				echo 1 > functions/mdm_data.qdss/in_ep
 				mkdir functions/mdm_data.dpl
 				echo 1 > functions/mdm_data.dpl/in_ep
+				mkdir functions/mdm_data.edl
+				echo 1 > functions/mdm_data.edl/in_ep
+				echo 1 > functions/mdm_data.edl/out_ep
 				;;
 		esac
 
@@ -168,12 +171,24 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*sdxpoorwills* | *sdxprairie* )
+		*sdxpoorwills* )
+			# Check if device is ADP with PCIe fusion
+			if [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "1" ]; then
+				echo 9104 > /etc/usb/boot_hsusb_comp
+			# Check if device is ADP with USB fusion
+			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "2" ]; then
+				echo 9102 > /etc/usb/boot_hsusb_comp
+			# Use this for MTP/TTP in PCIe mode
+			elif [ -e /dev/mhi_ctrl ]; then
+				echo 901F > /etc/usb/boot_hsusb_comp
+			fi
+			;;
+		*sdxprairie* )
 			if [ -e /dev/mhi_ctrl ]; then
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* )
+		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *qcs610* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
 		*sm8150* )
@@ -196,7 +211,7 @@ case "$1" in
 		cd /sys/kernel/config/usb_gadget/g1/functions/uvc.0
 
 		echo 3072 > streaming_maxpacket
-		echo 1 > streaming_maxburst
+		echo 10 > streaming_maxburst
 		mkdir control/header/h
 		ln -s control/header/h control/class/fs/
 		ln -s control/header/h control/class/ss
@@ -278,6 +293,14 @@ case "$1" in
 	if [ -d /sys/class/android_usb/android0 ]
 	then
 		pid=`cat /etc/usb/boot_hsusb_comp`
+		case `source /sbin/usb/target` in
+			*sdxprairie* )
+				if [ -f "/sys/firmware/devicetree/base/soc/qcom,mss@4080000/qcom,auto-boot" ]
+				then
+					pid="90F0"
+				fi
+				;;
+		esac
 		# make 901D as default composition
                 if [ -z "$pid" ]
 		then

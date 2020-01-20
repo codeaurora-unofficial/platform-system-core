@@ -39,7 +39,7 @@ enable_qcs40x_debug()
 	fi
 
 	echo 0 > $DCC_PATH/enable
-	echo 2 > $DCC_PATH/curr_list
+	echo 1 > $DCC_PATH/curr_list
 	echo cap > $DCC_PATH/func_type
 	echo sram > $DCC_PATH/data_sink
 	echo 1 > $DCC_PATH/config_reset
@@ -57,7 +57,7 @@ enable_qcs40x_debug()
 
 	echo "++++ $0 -> DCC-Enable END" > /dev/kmsg
 
-#        echo "++++ $0 -> ENABLE-FTRACE START" > /dev/kmsg
+        echo "++++ $0 -> ENABLE-FTRACE START" > /dev/kmsg
         #Enable FTRACE_ENABLE on QCS40x
 	#bail out if its perf config
 	if [ ! -d /sys/module/msm_rtb ]
@@ -74,25 +74,25 @@ enable_qcs40x_debug()
 	fi
 
 	#coresight
-#	echo sg > /sys/bus/coresight/devices/coresight-tmc-etr/mem_type
+	echo sg > /sys/bus/coresight/devices/coresight-tmc-etr/mem_type
 
-#	echo 0 > /sys/kernel/debug/tracing/events/enable
-#	echo mem > /sys/bus/coresight/devices/coresight-tmc-etr/out_mode
-#	echo 1 > /sys/bus/coresight/devices/coresight-tmc-etr/enable_sink
-#	echo 1 > /sys/bus/coresight/devices/coresight-stm/enable_source
-#	echo 1 > /sys/kernel/debug/tracing/tracing_on
+	echo 0 > /sys/kernel/debug/tracing/events/enable
+	echo mem > /sys/bus/coresight/devices/coresight-tmc-etr/out_mode
+	echo 1 > /sys/bus/coresight/devices/coresight-tmc-etr/enable_sink
+	echo 1 > /sys/bus/coresight/devices/coresight-stm/enable_source
+	echo 1 > /sys/kernel/debug/tracing/tracing_on
 
 	#SoftIRQs
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/enable
-#	#echo 1 > /sys/kernel/debug/tracing/events/irq/filter
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_entry/enable
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_exit/enable
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_raise/enable
+	echo 1 > /sys/kernel/debug/tracing/events/irq/enable
+	#echo 1 > /sys/kernel/debug/tracing/events/irq/filter
+	echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_entry/enable
+	echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_exit/enable
+	echo 1 > /sys/kernel/debug/tracing/events/irq/softirq_raise/enable
 	#IRQs
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/enable
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_entry/enable
-#	echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_exit/enable
-#	echo "++++ $0 -> FTRACE-Enable END" > /dev/kmsg
+	echo 1 > /sys/kernel/debug/tracing/events/irq/enable
+	echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_entry/enable
+	echo 1 > /sys/kernel/debug/tracing/events/irq/irq_handler_exit/enable
+	echo "++++ $0 -> FTRACE-Enable END" > /dev/kmsg
 
 	echo "++++ $0 -> END" > /dev/kmsg
 }
