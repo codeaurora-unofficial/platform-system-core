@@ -32,6 +32,13 @@ export LS_COLORS="none"
 
 case "$1" in
   init)
+	# bail out from script if qcom_gadget is enabled
+	enabled=`cat /sys/bus/platform/devices/qcom_gadget/enabled`
+	if [ "$enabled" == "Y" ]
+	then
+		exit 1
+	fi
+
 	if [ -d /sys/class/android_usb/android0/f_ffs ]
 	then
 		echo adb > /sys/class/android_usb/android0/f_ffs/aliases

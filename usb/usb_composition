@@ -120,6 +120,13 @@ common_functions() {
 	echo "0"
 }
 
+# disable qcom_gadget and run start_usb script if qcom_gadget is enabled
+enabled=`cat /sys/bus/platform/devices/qcom_gadget/enabled`
+if [ "$enabled" == "Y" ]; then
+	echo 0 > /sys/bus/platform/devices/qcom_gadget/enabled
+	source /etc/initscripts/usb init
+fi
+
 hsusb_comp=`cat $symlink_hsusb`
 hsic_comp=`cat $symlink_hsic`
 
