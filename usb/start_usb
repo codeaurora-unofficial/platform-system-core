@@ -297,7 +297,7 @@ case "$1" in
 			*sdxprairie* )
 				if [ -f "/sys/firmware/devicetree/base/soc/qcom,mss@4080000/qcom,auto-boot" ]
 				then
-					pid="90F0"
+					pid="90EF"
 				fi
 				;;
 		esac
