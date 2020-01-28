@@ -28,7 +28,7 @@
 [Unit]
 SourcePath=/etc/start_pcie
 Description=pcie Service
-After=systemrw.mount start_stop_ipa_fws.service data.mount
+After=systemrw.mount start_stop_ipa_fws.service data.mount label-data.service
 Requires=systemrw.mount
 RequiresMountsFor=/systemrw
 DefaultDependencies=no
@@ -36,4 +36,5 @@ DefaultDependencies=no
 [Service]
 Type=oneshot
 KillMode=process
+ExecStartPre=/sbin/mount-copybind /systemrw/boot_hsusb_comp /etc/usb/boot_hsusb_comp
 ExecStart=/etc/start_pcie
