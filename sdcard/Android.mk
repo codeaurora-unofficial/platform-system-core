@@ -9,6 +9,9 @@ endif
 LOCAL_SRC_FILES := sdcard.c
 LOCAL_MODULE := sdcard
 LOCAL_CFLAGS := -Wall -Wno-unused-parameter -Werror
+ifeq ($(TARGET_ROARING_LIONUS), true)
+    LOCAL_CFLAGS += -DTARGET_ROARING_LIONUS
+endif
 
 LOCAL_SHARED_LIBRARIES := libcutils
 

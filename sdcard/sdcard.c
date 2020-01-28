@@ -1206,7 +1206,9 @@ static int handle_open(struct fuse* fuse, struct fuse_handler* handler,
     #ifdef FUSE_SHORTCIRCUIT
         out.lower_fd = h->fd;
     #else
-        out.padding = 0;
+        #ifndef TARGET_ROARING_LIONUS
+            out.padding = 0;
+        #endif
     #endif
 
     fuse_reply(fuse, hdr->unique, &out, sizeof(out));
@@ -1376,7 +1378,9 @@ static int handle_opendir(struct fuse* fuse, struct fuse_handler* handler,
     #ifdef FUSE_SHORTCIRCUIT
         out.lower_fd = -1;
     #else
-        out.padding = 0;
+        #ifndef TARGET_ROARING_LIONUS
+            out.padding = 0;
+        #endif
     #endif
 
     fuse_reply(fuse, hdr->unique, &out, sizeof(out));
