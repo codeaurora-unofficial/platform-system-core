@@ -40,10 +40,12 @@ case "$1" in
 	if [ "$ker_ver" == "4.14" ]
 	then
 		echo -n "Starting powerconfig for mdm9607: with Kernel $ker_ver "
-		echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-		echo 800000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 		# Enable Low Power modes
 		echo 0 > /sys/module/lpm_levels_legacy/parameters/sleep_disabled
+		echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+		echo compute > /sys/class/devfreq/soc:qcom,cpubw/governor
+		echo mem > /sys/power/autosleep
+		echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
 	else
 		echo -n "Starting powerconfig for mdm9607: with Kernel $ker_ver "
 		echo "interactive" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
