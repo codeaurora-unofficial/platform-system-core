@@ -117,6 +117,21 @@ struct sync_fence_info {
 };
 
 /**
+ * Get the array of fence infos from the sync file's info.
+ *
+ * The returned array is owned by the parent sync file info, and has
+ * info->num_fences entries.
+ */
+static inline struct sync_fence_info* sync_get_fence_info(const struct sync_file_info* info) {
+// This header should compile in C, but some C++ projects enable
+// warnings-as-error for C-style casts.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+    return (struct sync_fence_info *)(uintptr_t)(info->sync_fence_info);
+#pragma GCC diagnostic pop
+}
+
+/**
  * Mainline API:
  *
  * Opcodes  0, 1 and 2 were burned during a API change to avoid users of the
