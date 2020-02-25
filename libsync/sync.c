@@ -198,6 +198,7 @@ static struct sync_fence_info_data *sync_file_info_to_legacy_fence_info(
     struct sync_pt_info *legacy_pt_info;
     const struct sync_fence_info *fence_info = sync_get_fence_info(info);
     const uint32_t num_fences = info->num_fences;
+    uint32_t i;
 
     legacy_info = malloc(4096);
     if (legacy_info == NULL)
@@ -208,7 +209,7 @@ static struct sync_fence_info_data *sync_file_info_to_legacy_fence_info(
     legacy_info->status = info->status;
 
     legacy_pt_info = (struct sync_pt_info *)legacy_info->pt_info;
-    for (uint32_t i = 0; i < num_fences; i++) {
+    for (i = 0; i < num_fences; i++) {
         legacy_pt_info[i].len = sizeof(*legacy_pt_info);
         strlcpy(legacy_pt_info[i].obj_name, fence_info[i].obj_name,
                 sizeof(legacy_pt_info->obj_name));
