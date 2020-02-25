@@ -143,7 +143,7 @@ case "$target" in
                 echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/suspend_enabled
 
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-                echo mem > /sys/power/autosleep
+                #echo mem > /sys/power/autosleep
 
                 echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
                 enable_qcs40x_debug
