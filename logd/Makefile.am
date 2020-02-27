@@ -1,4 +1,4 @@
-root_sbindir       := "/sbin"
+root_sbindir       := "/usr/sbin"
 root_sbin_PROGRAMS := logd
 
 logd_SOURCES = main.cpp \
