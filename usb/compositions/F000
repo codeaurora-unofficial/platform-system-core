@@ -44,6 +44,18 @@ run_9x35() {
 	echo mass_storage > /sys/class/android_usb/android$num/functions
 	echo 1 > /sys/class/android_usb/android$num/enable
 }
+run_configfs() {
+	pkill adbd
+	cd /sys/kernel/config/usb_gadget/g1
+	rm configs/c*/f*
+	echo 0x05c6 > idVendor
+	echo 0xF000 > idProduct
+	echo "MS" > configs/c.1/strings/0x409/configuration
+	ln -s functions/mass_storage.0 configs/c.1/f1
+	echo "binding UDC with Gadget..." $1
+	echo $1 > UDC
+	cd /
+}
 
 case `source /sbin/usb/target` in
 	*9x35* )
@@ -52,6 +64,18 @@ case `source /sbin/usb/target` in
 	*9640* )
 		run_9x35 &
 		;;
+        *9607* )
+                KERNEL_VER=`uname -r`
+                KERNEL_VER=`echo $KERNEL_VER |cut -d '.' -f 1-2`
+                CHECK=`expr $KERNEL_VER \>= 4.14`
+                if [ $CHECK -eq 1 ]
+                then
+                        udcname=`ls -1 /sys/class/udc | head -n 1`
+                        run_configfs  $udcname &
+                else
+			run_9x35 &
+                fi
+                ;;
 	* )
 		run_9x35 &
 		;;
