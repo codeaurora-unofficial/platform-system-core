@@ -78,6 +78,9 @@ case "$1" in
 		mkdir functions/gser.0
 		mkdir functions/rmnet_bam.rmnet_bam_dmux
 		mkdir functions/rndis.rndis
+		mkdir functions/qdss.qdss
+		mkdir functions/ecm.ecm
+		mkdir functions/uac1_legacy.uac1_legacy1
 		echo "$serialno" > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
 		echo "$socplatform" > strings/0x409/product
