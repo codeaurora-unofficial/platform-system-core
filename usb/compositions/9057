@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012-2015,2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2015,2017,2020 The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -99,6 +99,26 @@ run_9650() {
 	sleep $delay
 	echo 1 > /sys/class/android_usb/android$num/enable
 }
+run_configfs() {
+	pkill adbd
+	cd /sys/kernel/config/usb_gadget/g1
+	rm os_desc/c* 2> /dev/null
+	rm configs/c*/f* 2> /dev/null
+	rm -rf configs/c.2 configs/c.3 2> /dev/null
+	mkdir configs/c.2
+	mkdir configs/c.2/strings/0x409
+	echo 0x05c6 > idVendor
+	echo 0x9057 > idProduct
+	echo "RNDIS" > configs/c.1/strings/0x409/configuration
+	echo "ECM" > configs/c.2/strings/0x409/configuration
+	ln -s functions/rndis.rndis configs/c.1/f1
+	ln -s functions/ecm.ecm configs/c.2/f1
+	echo 0xA0 > configs/c.1/bmAttributes
+	echo 0xA0 > configs/c.2/bmAttributes
+	echo "binding UDC with Gadget..." $1
+	echo $1 > UDC
+	cd /
+}
 
 case `source /sbin/usb/target` in
 	*9x15* )
@@ -111,7 +131,16 @@ case `source /sbin/usb/target` in
 		run_9x35 &
 		;;
 	*9607* )
-		run_9607 &
+		KERNEL_VER=`uname -r`
+		KERNEL_VER=`echo $KERNEL_VER |cut -d '.' -f 1-2`
+		CHECK=`expr $KERNEL_VER \>= 4.14`
+		if [ $CHECK -eq 1 ]
+		then
+			udcname=`ls -1 /sys/class/udc | head -n 1`
+			run_configfs  $udcname &
+		else
+			run_9607 &
+		fi
 		;;
 	*8909* )
 		run_9607 &

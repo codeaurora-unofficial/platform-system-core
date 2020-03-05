@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2013-2015,2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2013-2015,2017,2020 The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -79,6 +79,31 @@ run_9x35() {
 	fi
 }
 
+run_configfs() {
+	echo start > /data/usb_bind_in_progress
+	if [ $from_adb = "n" ]
+	then
+		pkill adbd
+		/etc/init.d/adbd start
+		sleep 1
+	fi
+	cd /sys/kernel/config/usb_gadget/g1
+	rm os_desc/c* 2> /dev/null
+	rm configs/c*/f* 2> /dev/null
+	rm -rf configs/c.2 configs/c.3 2> /dev/null
+	echo 0x05c6 > idVendor
+	echo 0x9060 > idProduct
+	echo "DIAG_ADB_QDSS" > configs/c.1/strings/0x409/configuration
+	ln -s functions/diag.diag configs/c.1/f1
+	ln -s functions/qdss.qdss configs/c.1/f2
+	ln -s functions/ffs.adb configs/c.1/f3
+	echo 1 > functions/qdss.qdss/enable_debug_inface
+	rm -f /data/usb_bind_in_progress
+	echo "binding UDC with Gadget..." $1
+	echo $1 > UDC
+	cd /
+}
+
 case `source /sbin/usb/target` in
 	*9x25* )
 		run_9x25 &
@@ -87,7 +112,16 @@ case `source /sbin/usb/target` in
 		run_9x35 &
 		;;
 	*9607* )
-		run_9x35 &
+		KERNEL_VER=`uname -r`
+		KERNEL_VER=`echo $KERNEL_VER |cut -d '.' -f 1-2`
+		CHECK=`expr $KERNEL_VER \>= 4.14`
+		if [ $CHECK -eq 1 ]
+		then
+			udcname=`ls -1 /sys/class/udc | head -n 1`
+			run_configfs  $udcname &
+		else
+			run_9x35 &
+		fi
 		;;
 	*8909* )
 		run_9x35 &
