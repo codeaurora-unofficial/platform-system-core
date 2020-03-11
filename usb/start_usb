@@ -32,6 +32,13 @@ export LS_COLORS="none"
 
 case "$1" in
   init)
+	# bail out from script if qcom_gadget is enabled
+	enabled=`cat /sys/bus/platform/devices/qcom_gadget/enabled`
+	if [ "$enabled" == "Y" ]
+	then
+		exit 1
+	fi
+
 	if [ -d /sys/class/android_usb/android0/f_ffs ]
 	then
 		echo adb > /sys/class/android_usb/android0/f_ffs/aliases
@@ -172,19 +179,24 @@ case "$1" in
 			fi
 			;;
 		*sdxpoorwills* )
+			# Check if device is standalone ADP
+			if [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "0" ]; then
+				echo 90DB > /etc/usb/boot_hsusb_comp
 			# Check if device is ADP with PCIe fusion
-			if [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "1" ]; then
+			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "1" ]; then
 				echo 9104 > /etc/usb/boot_hsusb_comp
 			# Check if device is ADP with USB fusion
 			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "2" ]; then
-				echo 9102 > /etc/usb/boot_hsusb_comp
+				case `cat /etc/usb/boot_hsusb_comp` in
+				    *9102* )
+					# Dual RmNet selected by user, no change required
+				    ;;
+				    * )
+					echo 9106 > /etc/usb/boot_hsusb_comp
+				    ;;
+				esac
 			# Use this for MTP/TTP in PCIe mode
 			elif [ -e /dev/mhi_ctrl ]; then
-				echo 901F > /etc/usb/boot_hsusb_comp
-			fi
-			;;
-		*sdxprairie* )
-			if [ -e /dev/mhi_ctrl ]; then
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
@@ -297,7 +309,7 @@ case "$1" in
 			*sdxprairie* )
 				if [ -f "/sys/firmware/devicetree/base/soc/qcom,mss@4080000/qcom,auto-boot" ]
 				then
-					pid="90F0"
+					pid="90EF"
 				fi
 				;;
 		esac
