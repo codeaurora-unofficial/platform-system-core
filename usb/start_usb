@@ -200,6 +200,25 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
+		*sdxprairie* )
+			# Check if device is standalone ADP
+			if [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "0" ]; then
+				echo 90DB > /etc/usb/boot_hsusb_comp
+			# Check if device is ADP with PCIe fusion
+			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "1" ]; then
+				echo 9104 > /etc/usb/boot_hsusb_comp
+			# Check if device is ADP with USB fusion
+			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "2" ]; then
+				case `cat /etc/usb/boot_hsusb_comp` in
+				    *9106* )
+					# ECM + RmNet_v2x selected by user, no change required
+				    ;;
+				    * )
+					echo 9102 > /etc/usb/boot_hsusb_comp
+				    ;;
+				esac
+			fi
+			;;
 		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *qcs610* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
