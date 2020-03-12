@@ -52,7 +52,6 @@ run_configfs() {
 	ln -s functions/gsi.rmnet configs/c.1/f2
 	ln -s functions/ipc.ipc configs/c.1/f3
 	ln -s functions/diag.diag configs/c.1/f4
-	echo 0xA0 > configs/c.1/bmAttributes
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
