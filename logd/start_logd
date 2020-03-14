@@ -31,6 +31,12 @@
 # Description: init.d script to start logd daemon
 
 set -e
+wait_for_logd_to_start() {
+    while [ -z $(pidof -o %PPID logd) ];
+    do
+        echo "waiting for logd to start"
+    done
+}
 
 case "$1" in
   start)
@@ -41,7 +47,18 @@ case "$1" in
             chmod 777 /dev/socket
         fi
         echo 600 > /proc/sys/net/unix/max_dgram_qlen
-        start-stop-daemon -S -b -a /sbin/logd
+        if [ -z $(pidof -o %PPID logd) ]; then
+            echo "Starting logd ..."
+            start-stop-daemon -S -b -a /sbin/logd
+        fi
+        wait_for_logd_to_start
+        # add a small delay, before socket permission are
+        # being set.
+        sleep 0.2s
+        echo "Logd running: Setting permission .."
+        chmod 0666 /dev/socket/logd
+        chmod 0666 /dev/socket/logdr
+        chmod 0222 /dev/socket/logdw
         echo "done"
         ;;
   stop)
