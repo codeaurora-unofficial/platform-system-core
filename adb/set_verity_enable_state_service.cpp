@@ -40,6 +40,7 @@
 #define FSTAB_PREFIX "/fstab."
 #define VERITY_METADATA_SIZE 32768
 #define MAX_CMDLINE_LEN 512
+#define MAX_VERITYMD_LEN 10
 
 struct fstab *fstab;
 
@@ -78,10 +79,30 @@ static int get_target_device_size(int fd, const char *blk_device,
 
     ext4_parse_sb(&sb, &info);
 
-    /* SYSTEM_SIZE : system partition size; FEC_SIZE:fec image size; VERITY_METADATA_SIZE : index to the metadata magic number */
-    *device_size =  SYSTEM_SIZE - FEC_SIZE - VERITY_METADATA_SIZE ;
-
+    *device_size = info.len;
     adb_close(data_device);
+    return 0;
+}
+
+static int get_metadatatree_size(int fd, char *cmdline, uint32_t *mdtree_size)
+{
+    char veritymd_size[MAX_VERITYMD_LEN]= {};
+    char *eptr = NULL;
+    char veritymd[] = "veritymd=";
+    char *p = NULL;
+    unsigned int i;
+
+    if(!(p = strstr(cmdline, veritymd)))  // Is "veritymd=" present in cmdline
+        return -1;
+
+    p += strlen(veritymd);
+    for (i=0; i < (MAX_VERITYMD_LEN-1); i++) {
+        veritymd_size[i] = p[i];
+    }
+    veritymd_size[i] = '\0';
+
+    *mdtree_size = strtoul(veritymd_size, &eptr, MAX_VERITYMD_LEN);
+
     return 0;
 }
 
@@ -97,6 +118,95 @@ static int modify_string(char *str, char *orig, char *newstr)
     }
     return 0;
 }
+
+static int set_android_verity_enabled_state(int fd, const char *block_device,
+                                    const char* mount_point, char* cmdline, bool enable)
+{
+    uint32_t magic_number;
+    const uint32_t new_magic = enable ? VERITY_METADATA_MAGIC_NUMBER
+                                      : VERITY_METADATA_MAGIC_DISABLE;
+    uint64_t device_length = 0;
+    uint32_t verity_metadatatree_size = 0;
+    uint64_t verity_metadata_index = 0;
+    int device = -1;
+    int retval = -1;
+
+    if (enable == 1) {
+         WriteFdFmt(fd, "enable-verity not supported \n");
+        goto errout;
+    }
+
+    if (!make_block_device_writable(block_device)) {
+        WriteFdFmt(fd, "Could not make block device %s writable (%s).\n",
+                   block_device, strerror(errno));
+        goto errout;
+    }
+
+    device = adb_open(block_device, O_RDWR | O_CLOEXEC);
+    if (device == -1) {
+        WriteFdFmt(fd, "Could not open block device %s (%s).\n", block_device, strerror(errno));
+        WriteFdFmt(fd, "Maybe run adb remount?\n");
+        goto errout;
+    }
+
+    // find the start of the verity metadata
+    if (get_target_device_size(fd, (char*)block_device, &device_length) < 0) {
+        WriteFdFmt(fd, "Could not get target device size.\n");
+        goto errout;
+    }
+    if (get_metadatatree_size(fd, (char*)cmdline, &verity_metadatatree_size) < 0) {
+        WriteFdFmt(fd, "Could not get verity metadate tree size.\n");
+        goto errout;
+    }
+    verity_metadata_index = device_length + verity_metadatatree_size;
+
+    if (lseek64(device, verity_metadata_index, SEEK_SET) < 0) {
+        WriteFdFmt(fd, "Could not seek to start of verity metadata block.\n");
+        goto errout;
+    }
+
+    // check the magic number
+    if (adb_read(device, &magic_number, sizeof(magic_number)) != sizeof(magic_number)) {
+        WriteFdFmt(fd, "Couldn't read magic number!\n");
+        goto errout;
+    }
+
+    if (!enable && magic_number == VERITY_METADATA_MAGIC_DISABLE) {
+        WriteFdFmt(fd, "Verity already disabled on %s\n", mount_point);
+        goto errout;
+    }
+
+    if (enable && magic_number == VERITY_METADATA_MAGIC_NUMBER) {
+        WriteFdFmt(fd, "Verity already enabled on %s\n", mount_point);
+        goto errout;
+    }
+
+    if (magic_number != VERITY_METADATA_MAGIC_NUMBER
+            && magic_number != VERITY_METADATA_MAGIC_DISABLE) {
+        WriteFdFmt(fd, "Couldn't find verity metadata at offset %" PRIu64 "!\n", device_length);
+        goto errout;
+    }
+
+    if (lseek64(device, verity_metadata_index, SEEK_SET) < 0) {
+        WriteFdFmt(fd, "Could not seek to start of verity metadata block.\n");
+        goto errout;
+    }
+
+    if (adb_write(device, &new_magic, sizeof(new_magic)) != sizeof(new_magic)) {
+        WriteFdFmt(fd, "Could not set verity %s flag on device %s with error %s\n",
+                   enable ? "enabled" : "disabled",
+                   block_device, strerror(errno));
+        goto errout;
+    }
+
+    WriteFdFmt(fd, "Verity %s on %s\n", enable ? "enabled" : "disabled", mount_point);
+    retval = 0;
+errout:
+    if (device != -1)
+        adb_close(device);
+    return retval;
+}
+
 /* Turn verity on/off */
 static int set_verity_enabled_state(int fd, const char *block_device,
                                     const char* mount_point, bool enable)
@@ -132,7 +242,14 @@ static int set_verity_enabled_state(int fd, const char *block_device,
     /*overwrite "verity=" to "noveri" */
     result = modify_string(cmdline, old_verity, new_verity);
     if (result == -1) {
-        WriteFdFmt(fd, "Verity args are not present.\n");
+        WriteFdFmt(fd, "checking for dm-android-verity \n");
+
+        /* Set verity state if dm-android-verity is choosen */
+        if (0 == set_android_verity_enabled_state(fd,
+            "/dev/block/bootdevice/by-name/system", "/", cmdline, enable)) {
+            retval = 0;
+        }
+
         goto errout;
     }
     /*Find the offset of cmdline member in boot_img_hdr structure */
