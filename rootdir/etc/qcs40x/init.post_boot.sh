@@ -60,7 +60,9 @@ case "$target" in
             hw_platform=`cat /sys/devices/system/soc/soc0/hw_platform`
         fi
 
-        source /etc/initscripts/init_qti_debug
+        if [ -f /etc/init_qti_debug.sh ]; then
+            source /etc/init_qti_debug.sh
+        fi
 
         case "$soc_id" in
            "352" | "410" | "411")
@@ -141,7 +143,7 @@ case "$target" in
                 echo N > /sys/module/lpm_levels/perf/perf-l2-gdhs/suspend_enabled
 
                 echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-                echo mem > /sys/power/autosleep
+                #echo mem > /sys/power/autosleep
 
                 echo "++++ $0 -> Debug QCS40X - START" > /dev/kmsg
                 enable_qcs40x_debug

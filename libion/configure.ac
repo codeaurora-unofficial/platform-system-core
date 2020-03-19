@@ -33,38 +33,22 @@ if test "x$with_core_includes" != "xno"; then
    AC_SUBST(core_incdir,${core_incdir})
 fi
 
-AC_ARG_WITH([legacyion],
-      AC_HELP_STRING([--with-legacyion],
-         [enable legacy ion, building HLOS systems which use legacy ion]))
+AC_ARG_ENABLE([legacyion],
+              AS_HELP_STRING([--enable-legacyion],
+              [enable legacy ion usage for building HLOS systems]),
+              [has_legacyion=$enableval],
+              [has_legacyion=no])
 
-AM_CONDITIONAL(USE_LEGACYION, test "x${with_legacyion}" = "xyes")
+if (test "x${has_legacyion}" = "xno"); then
+    CFLAGS="${CFLAGS} -DTARGET_ION_ABI_VERSION=2"
+fi
+
+AM_CONDITIONAL(USE_LEGACYION, test "x${has_legacyion}" = "xyes")
 
 AC_ARG_WITH(sanitized-headers,
         AS_HELP_STRING([--with-sanitized-headers=DIR],
                 [Specify the location of the sanitized Linux headers]),
         [CPPFLAGS="$CPPFLAGS -I $withval"])
-
-AS_CASE([$host],
-        [arm*], [ARM=yes],
-        [ARM=no]
-)
-AM_CONDITIONAL(ARM, [test "x$ARM" = "xyes"])
-
-AS_CASE([$host],
-        [aarch64*], [ARM64=yes],
-        [ARM64=no]
-)
-AM_CONDITIONAL(ARM64, [test "x$ARM64" = "xyes"])
-
-AS_CASE([$host],
-        [x86_64*], [X86_64=yes],
-        [X86_64=no]
-)
-AM_CONDITIONAL(X86_64, [test "x$X86_64" = "xyes"])
-
-AM_CONDITIONAL(BUILD_HOST, [test "x$X86_64" = "xyes"])
-AM_CONDITIONAL(BUILD_DEVICE, [test "x$ARM$ARM64" != "xnono"])
-
 
 AC_CONFIG_FILES([ \
     Makefile \
