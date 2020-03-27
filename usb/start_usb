@@ -286,12 +286,6 @@ case "$1" in
 		SOFTAP_W_DUN=`cat /data/usb/softap_w_dun`
 	fi
 
-	# Check if device is in recovery
-	if [ -e /usr/bin/recovery ]; then
-		# make 901D as default composition in recovery mode
-		echo 901D > /etc/usb/boot_hsusb_comp
-	fi
-
 	# boot hsic composition:
 	if [ -d /sys/class/android_usb/android1 ]
 	then
