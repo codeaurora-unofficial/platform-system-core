@@ -188,11 +188,11 @@ case "$1" in
 			# Check if device is ADP with USB fusion
 			elif [ "$soc_hwplatform" == "ADP" ] && [ "$soc_subtypeid" == "2" ]; then
 				case `cat /etc/usb/boot_hsusb_comp` in
-				    *9102* )
-					# Dual RmNet selected by user, no change required
+				    *9106* )
+					# ECM + RmNet_v2x selected by user, no change required
 				    ;;
 				    * )
-					echo 9106 > /etc/usb/boot_hsusb_comp
+					echo 9102 > /etc/usb/boot_hsusb_comp
 				    ;;
 				esac
 			# Use this for MTP/TTP in PCIe mode
@@ -284,6 +284,12 @@ case "$1" in
 	if [ -f /data/usb/softap_w_dun ]
 	then
 		SOFTAP_W_DUN=`cat /data/usb/softap_w_dun`
+	fi
+
+	# Check if device is in recovery
+	if [ -e /usr/bin/recovery ]; then
+		# make 901D as default composition in recovery mode
+		echo 901D > /etc/usb/boot_hsusb_comp
 	fi
 
 	# boot hsic composition:

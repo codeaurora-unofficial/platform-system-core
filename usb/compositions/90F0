@@ -65,7 +65,6 @@ run_configfs() {
 	fi
 	ln -s functions/cser.nmea.1 configs/c.1/f6
 	ln -s functions/ffs.adb configs/c.1/f7
-	echo 0xA0 > configs/c.1/bmAttributes
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
