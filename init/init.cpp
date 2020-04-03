@@ -30,7 +30,6 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <thread>
 
 #include <android-base/chrono_utils.h>
 #include <android-base/file.h>
@@ -566,7 +565,6 @@ int main(int argc, char** argv) {
     bool is_first_stage = (getenv("INIT_SECOND_STAGE") == nullptr);
 
     if (is_first_stage) {
-        std::this_thread::sleep_for(500ms);
         boot_clock::time_point start_time = boot_clock::now();
 
         // Clear the umask.
