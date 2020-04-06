@@ -73,6 +73,7 @@ case "$1" in
 		mkdir functions/ffs.adb
 		mkdir functions/diag.diag
 		mkdir functions/mass_storage.0
+		mkdir functions/mass_storage.1
 		mkdir functions/cser.nmea.1
 		mkdir functions/cser.dun.0
 		mkdir functions/gser.0
@@ -80,6 +81,7 @@ case "$1" in
 		mkdir functions/rndis.rndis
 		mkdir functions/qdss.qdss
 		mkdir functions/ecm.ecm
+		mkdir functions/mbim.mbim
 		mkdir functions/uac1_legacy.uac1_legacy1
 		echo "$serialno" > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
