@@ -71,7 +71,8 @@ void initialize_string8()
 
 void terminate_string8()
 {
-    SharedBuffer::bufferFromData(gEmptyString)->release();
+    if (gEmptyString)
+        SharedBuffer::bufferFromData(gEmptyString)->release();
     gEmptyStringBuf = NULL;
     gEmptyString = NULL;
 }
