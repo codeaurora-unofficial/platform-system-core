@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2019, The Linux Foundation. All rights reserved.
+# Copyright (c) 2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -27,9 +27,9 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# DESCRIPTION: DIAG + IPC_ROUTER + RmNet + RmNet + ECM + QDSS (Trace Only) + ADPL + ADB
+# DESCRIPTION: DIAG + ADPL + QDSS (Trace Only) + IPC_ROUTER + ECM + ADB
 
-echo "Switching to composition number 0x9102"  > /dev/kmsg
+echo "Switching to composition number 0x910C"  > /dev/kmsg
 
 if [ "$#" -ge 3 ]; then
 	from_adb=$3
@@ -50,16 +50,14 @@ run_configfs() {
 	rm configs/c*/f* 2> /dev/null
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
-	echo 0x9102 > idProduct
-	echo "DIAG_IPC_RMNET_RMNET_ECM_QDSS_DPL_ADB" > configs/c.1/strings/0x409/configuration
+	echo 0x910C > idProduct
+	echo "DIAG_DPL_QDSS_IPC_ECM_ADB" > configs/c.1/strings/0x409/configuration
 	ln -s functions/diag.diag configs/c.1/f1
-	ln -s functions/ipc.ipc configs/c.1/f2
-	ln -s functions/gsi.rmnet configs/c.1/f3
-	ln -s functions/gsi.rmnet.v2x configs/c.1/f4
-	ln -s functions/ecm.ecm configs/c.1/f5
-	ln -s functions/qdss.qdss configs/c.1/f6
-	ln -s functions/gsi.dpl configs/c.1/f7
-	ln -s functions/ffs.adb configs/c.1/f8
+	ln -s functions/gsi.dpl configs/c.1/f2
+	ln -s functions/qdss.qdss configs/c.1/f3
+	ln -s functions/ipc.ipc configs/c.1/f4
+	ln -s functions/gsi.ecm configs/c.1/f5
+	ln -s functions/ffs.adb configs/c.1/f6
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
@@ -67,11 +65,11 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	*sdxpoorwills* | *sdxprairie* )
+	*sdxprairie* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
-        * )
+	* )
 		echo "This composition is currently not supported for this target "
 		;;
 esac
