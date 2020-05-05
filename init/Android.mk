@@ -30,6 +30,10 @@ init_options += \
     -DSHUTDOWN_ZERO_TIMEOUT=0
 endif
 
+ifeq ($(BOARD_SUPPORTS_EARLY_INIT),true)
+init_options += -DENABLE_EARLY_SERVICES
+endif
+
 init_options += -DLOG_UEVENTS=0 \
     -DSEPOLICY_VERSION=$(POLICYVERS)
 
