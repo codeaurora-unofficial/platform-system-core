@@ -161,7 +161,7 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *sa2150p* )
+		*8909* | *8053* | *8017* | *qcs605* | *qcs40x* | *sa2150p* | *qcs610* )
 			echo 901D > /etc/usb/boot_hsusb_comp
 		        ;;
 		*sm8150* )
@@ -184,7 +184,7 @@ case "$1" in
 		cd /sys/kernel/config/usb_gadget/g1/functions/uvc.0
 
 		echo 3072 > streaming_maxpacket
-		echo 1 > streaming_maxburst
+		echo 10 > streaming_maxburst
 		mkdir control/header/h
 		ln -s control/header/h control/class/fs/
 		ln -s control/header/h control/class/ss
