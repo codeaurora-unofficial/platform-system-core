@@ -180,7 +180,9 @@ static bool use_psi_monitors = false;
 static bool enable_preferred_apps =  false;
 static unsigned long pa_update_timeout_ms = 60000; /* 1 min */
 /* PSI window related variables */
-static int psi_window_size_ms, psi_poll_period_ms, psi_poll_period_scrit_ms;
+static int psi_window_size_ms = PSI_WINDOW_SIZE_MS;
+static int psi_poll_period_ms = PSI_POLL_PERIOD_MS;
+static int psi_poll_period_scrit_ms = PSI_POLL_PERIOD_MS;
 static struct psi_threshold psi_thresholds[VMPRESS_LEVEL_COUNT] = {
     { PSI_SOME, 70 },    /* 70ms out of 1sec for partial stall */
     { PSI_SOME, 100 },   /* 100ms out of 1sec for partial stall */
