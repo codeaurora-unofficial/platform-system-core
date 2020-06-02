@@ -78,6 +78,7 @@ static const struct fs_path_config android_dirs[] = {
     { 00771, AID_SHELL,        AID_SHELL,        0, "data/local/tmp" },
     { 00771, AID_SHELL,        AID_SHELL,        0, "data/local" },
     { 00770, AID_DHCP,         AID_DHCP,         0, "data/misc/dhcp" },
+    { 00770, AID_DHCP,         AID_DHCP,         0, "data/misc/dhcp-6.8.2" },
     { 00771, AID_SHARED_RELRO, AID_SHARED_RELRO, 0, "data/misc/shared_relro" },
     { 01771, AID_SYSTEM,       AID_MISC,         0, "data/misc" },
     { 00775, AID_MEDIA_RW,     AID_MEDIA_RW,     0, "data/media/Music" },
@@ -147,7 +148,12 @@ static const char* conf[][2] = {
 // Vendor entries should be done via a vendor or device specific config.fs.
 // See https://source.android.com/devices/tech/config/filesystem#using-file-system-capabilities
 static const struct fs_path_config android_files[] = {
-        // clang-format off
+    // clang-format off
+    { 00775, AID_ROOT,      AID_ROOT,      0, "system/b2g/b2g" },
+    { 00775, AID_ROOT,      AID_ROOT,      0, "system/b2g/updater" },
+    { 00775, AID_ROOT,      AID_ROOT,      0, "system/b2g/plugin-container" },
+    { 00775, AID_ROOT,      AID_ROOT,      0, "system/kaios/api-daemon" },
+    { 00775, AID_ROOT,      AID_ROOT,      0, "system/kaios/metrics_daemon" },
     { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app/*" },
     { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app-ephemeral/*" },
     { 00644, AID_SYSTEM,    AID_SYSTEM,    0, "data/app-private/*" },
@@ -176,6 +182,7 @@ static const struct fs_path_config android_files[] = {
     { 00755, AID_ROOT,      AID_SHELL,     0, "system/bin/crash_dump32" },
     { 00755, AID_ROOT,      AID_SHELL,     0, "system/bin/crash_dump64" },
     { 00755, AID_ROOT,      AID_SHELL,     0, "system/bin/debuggerd" },
+    { 00550, AID_DHCP,      AID_SHELL,     0, "system/etc/dhcpcd-6.8.2/dhcpcd-run-hooks" },
     { 00750, AID_ROOT,      AID_ROOT,      0, "system/bin/install-recovery.sh" },
     { 00550, AID_LOGD,      AID_LOGD,      0, "system/bin/logd" },
     { 00700, AID_ROOT,      AID_ROOT,      0, "system/bin/secilc" },
