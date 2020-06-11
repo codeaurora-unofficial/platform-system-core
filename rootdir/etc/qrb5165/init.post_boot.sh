@@ -115,6 +115,11 @@ case "$target" in
 	ddr_type4="07"
 	ddr_type5="08"
 
+	# Make unbound workqueue not run on cpu0, since all irqs are
+	# handled by cpu0 as default, it will preempt the workqueue if
+	# the workqueue also run on cpu0, and the latency is out of control.
+	echo fe > /sys/devices/virtual/workqueue/cpumask
+
 	# Core control parameters for gold
 	echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
 	echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
