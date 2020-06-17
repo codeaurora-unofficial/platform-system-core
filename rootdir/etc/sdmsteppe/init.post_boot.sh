@@ -177,6 +177,9 @@ case "$target" in
         echo 8 > /sys/devices/system/cpu/cpu0/core_ctl/task_thres
         echo 0 > /sys/devices/system/cpu/cpu6/core_ctl/enable
 
+        # Disabling Core control parameters on silver
+        echo 6 > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
+        echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
 
         # configure governor settings for big cluster
         echo "schedutil" > /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor
@@ -225,8 +228,16 @@ case "$target" in
     echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
     echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/rate_limit_us
     echo 1209600 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_freq
+    echo 90 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_load
     echo 576000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 
+    # sched_load_boost as -10 is equivalent to target load as 90. It is per cpu tunable.
+    echo -10 >  /sys/devices/system/cpu/cpu0/sched_load_boost
+    echo -10 >  /sys/devices/system/cpu/cpu1/sched_load_boost
+    echo -10 >  /sys/devices/system/cpu/cpu2/sched_load_boost
+    echo -10 >  /sys/devices/system/cpu/cpu3/sched_load_boost
+    echo -10 >  /sys/devices/system/cpu/cpu4/sched_load_boost
+    echo -10 >  /sys/devices/system/cpu/cpu5/sched_load_boost
 
     echo "0:1209600" > /sys/module/cpu_boost/parameters/input_boost_freq
     echo 40 > /sys/module/cpu_boost/parameters/input_boost_ms
@@ -242,7 +253,7 @@ case "$target" in
             echo "bw_hwmon" > $cpubw/governor
             echo 50 > $cpubw/polling_interval
             echo "2288 4577 7110 9155 12298 14236" > $cpubw/bw_hwmon/mbps_zones
-            echo 4 > $cpubw/bw_hwmon/sample_ms
+            echo 10 > $cpubw/bw_hwmon/sample_ms
             echo 68 > $cpubw/bw_hwmon/io_percent
             echo 20 > $cpubw/bw_hwmon/hist_memory
             echo 0 > $cpubw/bw_hwmon/hyst_length
@@ -256,7 +267,7 @@ case "$target" in
             echo "bw_hwmon" > $llccbw/governor
             echo 40 > $llccbw/polling_interval
             echo "1144 1720 2086 2929 3879 5931 6881" > $llccbw/bw_hwmon/mbps_zones
-            echo 4 > $llccbw/bw_hwmon/sample_ms
+            echo 20 > $llccbw/bw_hwmon/sample_ms
             echo 68 > $llccbw/bw_hwmon/io_percent
             echo 20 > $llccbw/bw_hwmon/hist_memory
             echo 0 > $llccbw/bw_hwmon/hyst_length
