@@ -36,44 +36,6 @@ else
     target=`getprop ro.board.platform`
 fi
 
-function configure_zram_parameters() {
-    MemTotalStr=`cat /proc/meminfo | grep MemTotal`
-    MemTotal=${MemTotalStr:16:8}
-
-    low_ram=`getprop ro.config.low_ram`
-
-    # Zram disk - 75% for Go devices.
-    # For 512MB Go device, size = 384MB, set same for Non-Go.
-    # For 1GB Go device, size = 768MB, set same for Non-Go.
-    # For >1GB and <=3GB Non-Go device, size = 1GB
-    # For >3GB and <=4GB Non-Go device, size = 2GB
-    # For >4GB Non-Go device, size = 4GB
-    # And enable lz4 zram compression for Go targets.
-
-    if [ "$low_ram" == "true" ]; then
-        echo lz4 > /sys/block/zram0/comp_algorithm
-    fi
-
-    if [ -f /sys/block/zram0/disksize ]; then
-        if [ -f /sys/block/zram0/use_dedup ]; then
-            echo 1 > /sys/block/zram0/use_dedup
-        fi
-        if [ $MemTotal -le 524288 ]; then
-            echo 402653184 > /sys/block/zram0/disksize
-        elif [ $MemTotal -le 1048576 ]; then
-            echo 805306368 > /sys/block/zram0/disksize
-        elif [ $MemTotal -le 3145728 ]; then
-            echo 1073741824 > /sys/block/zram0/disksize
-        elif [ $MemTotal -le 4194304 ]; then
-            echo 2147483648 > /sys/block/zram0/disksize
-        else
-            echo 4294967296 > /sys/block/zram0/disksize
-        fi
-        mkswap /dev/zram0
-        swapon /dev/zram0 -p 32758
-    fi
-}
-
 function configure_read_ahead_kb_values() {
     MemTotalStr=`cat /proc/meminfo | grep MemTotal`
     MemTotal=${MemTotalStr:16:8}
@@ -178,6 +140,9 @@ case "$target" in
 
 	# Disable Core control on silver
 	echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
+	echo 0 > /sys/devices/system/cpu/cpu4/core_ctl/enable
+	echo 0 > /sys/devices/system/cpu/cpu7/core_ctl/enable
+
 
 	# Setting b.L scheduler parameters
 	echo 95 95 > /proc/sys/kernel/sched_upmigrate
