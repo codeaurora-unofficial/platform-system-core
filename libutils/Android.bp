@@ -18,6 +18,11 @@ cc_library_headers {
     recovery_available: true,
     host_supported: true,
     native_bridge_supported: true,
+    apex_available: [
+        "//apex_available:platform",
+        "//apex_available:anyapex",
+    ],
+    min_sdk_version: "apex_inherit",
 
     header_libs: [
         "liblog_headers",
@@ -164,6 +169,7 @@ cc_library {
         "//apex_available:anyapex",
         "//apex_available:platform",
     ],
+    min_sdk_version: "apex_inherit",
 }
 
 cc_library {

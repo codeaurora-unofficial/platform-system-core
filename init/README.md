@@ -322,6 +322,10 @@ runs the service.
   This is mutually exclusive with the console option, which additionally connects stdin to the
   given console.
 
+`task_profiles <profile> [ <profile>\* ]`
+> Set task profiles for the process when it forks. This is designed to replace the use of
+  writepid option for moving a process into a cgroup.
+
 `timeout_period <seconds>`
 > Provide a timeout after which point the service will be killed. The oneshot keyword is respected
   here, so oneshot services do not automatically restart, however all other services will.
@@ -356,6 +360,8 @@ runs the service.
   cgroup/cpuset usage. If no files under /dev/cpuset/ are specified, but the
   system property 'ro.cpuset.default' is set to a non-empty cpuset name (e.g.
   '/foreground'), then the pid is written to file /dev/cpuset/_cpuset\_name_/tasks.
+  The use of this option for moving a process into a cgroup is obsolete. Please
+  use task_profiles option instead.
 
 
 Triggers
@@ -541,13 +547,16 @@ provides the `aidl_lazy_test_1` interface.
   * `ref`: use the systemwide DE key
   * `per_boot_ref`: use the key freshly generated on each boot.
 
-`mount_all <fstab> [ <path> ]\* [--<option>]`
+`mount_all [ <fstab> ] [--<option>]`
 > Calls fs\_mgr\_mount\_all on the given fs\_mgr-format fstab with optional
   options "early" and "late".
   With "--early" set, the init executable will skip mounting entries with
   "latemount" flag and triggering fs encryption state event. With "--late" set,
   init executable will only mount entries with "latemount" flag. By default,
   no option is set, and mount\_all will process all entries in the given fstab.
+  If the fstab parameter is not specified, fstab.${ro.boot.fstab_suffix},
+  fstab.${ro.hardware} or fstab.${ro.hardware.platform} will be scanned for
+  under /odm/etc, /vendor/etc, or / at runtime, in that order.
 
 `mount <type> <device> <dir> [ <flag>\* ] [<options>]`
 > Attempt to mount the named device at the directory _dir_
@@ -614,8 +623,11 @@ provides the `aidl_lazy_test_1` interface.
 `stop <service>`
 > Stop a service from running if it is currently running.
 
-`swapon_all <fstab>`
+`swapon_all [ <fstab> ]`
 > Calls fs\_mgr\_swapon\_all on the given fstab file.
+  If the fstab parameter is not specified, fstab.${ro.boot.fstab_suffix},
+  fstab.${ro.hardware} or fstab.${ro.hardware.platform} will be scanned for
+  under /odm/etc, /vendor/etc, or / at runtime, in that order.
 
 `symlink <target> <path>`
 > Create a symbolic link at _path_ with the value _target_
@@ -630,6 +642,12 @@ provides the `aidl_lazy_test_1` interface.
 `umount <path>`
 > Unmount the filesystem mounted at that path.
 
+`umount_all [ <fstab> ]`
+> Calls fs\_mgr\_umount\_all on the given fstab file.
+  If the fstab parameter is not specified, fstab.${ro.boot.fstab_suffix},
+  fstab.${ro.hardware} or fstab.${ro.hardware.platform} will be scanned for
+  under /odm/etc, /vendor/etc, or / at runtime, in that order.
+
 `verity_update_state <mount-point>`
 > Internal implementation detail used to update dm-verity state and
   set the partition._mount-point_.verified properties used by adb remount
@@ -638,7 +656,8 @@ provides the `aidl_lazy_test_1` interface.
 `wait <path> [ <timeout> ]`
 > Poll for the existence of the given file and return when found,
   or the timeout has been reached. If timeout is not specified it
-  currently defaults to five seconds.
+  currently defaults to five seconds. The timeout value can be
+  fractional seconds, specified in floating point notation.
 
 `wait_for_prop <name> <value>`
 > Wait for system property _name_ to be _value_. Properties are expanded

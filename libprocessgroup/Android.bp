@@ -13,6 +13,11 @@ cc_library_headers {
             enabled: true,
         },
     },
+    apex_available: [
+        "//apex_available:platform",
+        "//apex_available:anyapex",
+    ],
+    min_sdk_version: "29",
 }
 
 cc_library {
@@ -52,4 +57,9 @@ cc_library {
         "-Werror",
         "-Wexit-time-destructors",
     ],
+    apex_available: [
+        "//apex_available:platform",
+        "//apex_available:anyapex",
+    ],
+    min_sdk_version: "29",
 }

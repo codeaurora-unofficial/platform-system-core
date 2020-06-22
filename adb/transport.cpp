@@ -506,11 +506,10 @@ bool FdConnection::DoTlsHandshake(RSA* key, std::string* auth_key) {
 #endif
 
 #if ADB_HOST
-    tls_ = TlsConnection::Create(TlsConnection::Role::Client,
+    tls_ = TlsConnection::Create(TlsConnection::Role::Client, x509_str, evp_str, osh);
 #else
-    tls_ = TlsConnection::Create(TlsConnection::Role::Server,
+    tls_ = TlsConnection::Create(TlsConnection::Role::Server, x509_str, evp_str, osh);
 #endif
-                                 x509_str, evp_str, osh);
     CHECK(tls_);
 #if ADB_HOST
     // TLS 1.3 gives the client no message if the server rejected the
@@ -547,6 +546,8 @@ void FdConnection::Close() {
 }
 
 void send_packet(apacket* p, atransport* t) {
+    CHECK(t != nullptr);
+
     p->msg.magic = p->msg.command ^ 0xffffffff;
     // compute a checksum for connection/auth packets for compatibility reasons
     if (t->get_protocol_version() >= A_VERSION_SKIP_CHECKSUM) {
@@ -557,11 +558,9 @@ void send_packet(apacket* p, atransport* t) {
 
     VLOG(TRANSPORT) << dump_packet(t->serial.c_str(), "to remote", p);
 
-    if (t == nullptr) {
-        LOG(FATAL) << "Transport is null";
-    }
-
-    if (t->Write(p) != 0) {
+    if (!t->online) {
+        LOG(INFO) << "Transport is offline";
+    } else if (t->Write(p) != 0) {
         D("%s: failed to enqueue packet, closing transport", t->serial.c_str());
         t->Kick();
     }
@@ -809,6 +808,7 @@ static void transport_registration_func(int _fd, unsigned ev, void*) {
         });
         t->connection()->SetErrorCallback([t](Connection*, const std::string& error) {
             LOG(INFO) << t->serial_name() << ": connection terminated: " << error;
+            t->online = false;
             fdevent_run_on_main_thread([t]() {
                 handle_offline(t);
                 transport_destroy(t);

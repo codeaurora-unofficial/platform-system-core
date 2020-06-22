@@ -80,6 +80,7 @@
 #include "service.h"
 #include "service_parser.h"
 #include "sigchld_handler.h"
+#include "subcontext.h"
 #include "system/core/init/property_service.pb.h"
 #include "util.h"
 
@@ -113,8 +114,6 @@ static int property_triggers_enabled = 0;
 
 static int signal_fd = -1;
 static int property_fd = -1;
-
-static std::unique_ptr<Subcontext> subcontext;
 
 struct PendingControlMessage {
     std::string message;
@@ -268,9 +267,8 @@ Parser CreateParser(ActionManager& action_manager, ServiceList& service_list) {
     Parser parser;
 
     parser.AddSectionParser("service", std::make_unique<ServiceParser>(
-                                               &service_list, subcontext.get(), std::nullopt));
-    parser.AddSectionParser("on",
-                            std::make_unique<ActionParser>(&action_manager, subcontext.get()));
+                                               &service_list, GetSubcontext(), std::nullopt));
+    parser.AddSectionParser("on", std::make_unique<ActionParser>(&action_manager, GetSubcontext()));
     parser.AddSectionParser("import", std::make_unique<ImportParser>(&parser));
 
     return parser;
@@ -280,9 +278,9 @@ Parser CreateParser(ActionManager& action_manager, ServiceList& service_list) {
 Parser CreateServiceOnlyParser(ServiceList& service_list, bool from_apex) {
     Parser parser;
 
-    parser.AddSectionParser("service",
-                            std::make_unique<ServiceParser>(&service_list, subcontext.get(),
-                                                            std::nullopt, from_apex));
+    parser.AddSectionParser(
+            "service", std::make_unique<ServiceParser>(&service_list, GetSubcontext(), std::nullopt,
+                                                       from_apex));
     return parser;
 }
 
@@ -526,7 +524,9 @@ static Result<void> queue_property_triggers_action(const BuiltinArguments& args)
 // Set the UDC controller for the ConfigFS USB Gadgets.
 // Read the UDC controller in use from "/sys/class/udc".
 // In case of multiple UDC controllers select the first one.
-static void set_usb_controller() {
+static void SetUsbController() {
+    static auto controller_set = false;
+    if (controller_set) return;
     std::unique_ptr<DIR, decltype(&closedir)>dir(opendir("/sys/class/udc"), closedir);
     if (!dir) return;
 
@@ -535,6 +535,7 @@ static void set_usb_controller() {
         if (dp->d_name[0] == '.') continue;
 
         SetProperty("sys.usb.controller", dp->d_name);
+        controller_set = true;
         break;
     }
 }
@@ -827,7 +828,7 @@ int SecondStageMain(int argc, char** argv) {
     fs_mgr_vendor_overlay_mount_all();
     export_oem_lock_status();
     MountHandler mount_handler(&epoll);
-    set_usb_controller();
+    SetUsbController();
 
     const BuiltinFunctionMap& function_map = GetBuiltinFunctionMap();
     Action::set_function_map(&function_map);
@@ -836,7 +837,7 @@ int SecondStageMain(int argc, char** argv) {
         PLOG(FATAL) << "SetupMountNamespaces failed";
     }
 
-    subcontext = InitializeSubcontext();
+    InitializeSubcontext();
 
     ActionManager& am = ActionManager::GetInstance();
     ServiceList& sm = ServiceList::GetInstance();
@@ -934,6 +935,7 @@ int SecondStageMain(int argc, char** argv) {
         }
         if (!IsShuttingDown()) {
             HandleControlMessages();
+            SetUsbController();
         }
     }
 
