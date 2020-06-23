@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2019, The Linux Foundation. All rights reserved.
+# Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -62,7 +62,11 @@ run_configfs() {
 	echo 0x05c6 > idVendor
 	echo 0x90E5 > idProduct
 	echo "diag_diag_mdm_qdss_qdss_mdm_dun_dpl_rmnet_adb" > configs/c.1/strings/0x409/configuration
-	ln -s functions/diag.diag configs/c.1/f1
+	if [ -e functions/ffs.diag ]; then
+		ln -s functions/ffs.diag configs/c.1/f1
+	else
+		ln -s functions/diag.diag configs/c.1/f1
+	fi
 	ln -s functions/diag.diag_mdm configs/c.1/f2
 	ln -s functions/qdss.qdss configs/c.1/f3
 	ln -s functions/qdss.qdss_mdm configs/c.1/f4
