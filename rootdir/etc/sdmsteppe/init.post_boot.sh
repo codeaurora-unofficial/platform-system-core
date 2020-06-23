@@ -253,7 +253,7 @@ case "$target" in
             echo "bw_hwmon" > $cpubw/governor
             echo 50 > $cpubw/polling_interval
             echo "2288 4577 7110 9155 12298 14236" > $cpubw/bw_hwmon/mbps_zones
-            echo 10 > $cpubw/bw_hwmon/sample_ms
+            echo 20 > $cpubw/bw_hwmon/sample_ms
             echo 68 > $cpubw/bw_hwmon/io_percent
             echo 20 > $cpubw/bw_hwmon/hist_memory
             echo 0 > $cpubw/bw_hwmon/hyst_length
