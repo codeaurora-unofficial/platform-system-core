@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2017,2020, The Linux Foundation. All rights reserved.
+# Copyright (c) 2017, 2020-2021, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -81,7 +81,11 @@ run_configfs() {
 	echo 0x90c0 > idProduct
 	echo "RNDIS_DIAG_DPL_ADB" > configs/c.1/strings/0x409/configuration
 	ln -s functions/gsi.rndis configs/c.1/f1
-	ln -s functions/diag.diag configs/c.1/f2
+	if [ -e functions/ffs.diag ]; then
+		ln -s functions/ffs.diag configs/c.1/f2
+	else
+		ln -s functions/diag.diag configs/c.1/f2
+	fi
 	ln -s functions/gsi.dpl configs/c.1/f3
 	ln -s functions/ffs.adb configs/c.1/f4
 	echo 0xA0 > configs/c.1/bmAttributes
