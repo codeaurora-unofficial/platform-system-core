@@ -53,7 +53,7 @@ run_configfs() {
 	echo 0x90ff > idProduct
 	echo "DIAG_DIAG_MDM_MDM_QDSS_MDM_DPL_ADB" > configs/c.1/strings/0x409/configuration
 	ln -s functions/diag.diag configs/c.1/f1
-	ln -s functions/diag.diag_mdm configs/c.1/f2
+	ln -s functions/mdm_data.diag configs/c.1/f2
 	ln -s functions/mdm_data.qdss configs/c.1/f3
 	ln -s functions/mdm_data.dpl configs/c.1/f4
 	ln -s functions/ffs.adb configs/c.1/f5
