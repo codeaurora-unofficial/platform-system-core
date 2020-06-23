@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012-2015, 2018-2019, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2015, 2018-2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -92,6 +92,12 @@ case "$1" in
 		mkdir functions/uvc.0
 		mkdir functions/rndis.rndis
 		mkdir functions/ipc.ipc
+
+		kernel_version=`uname -r | cut -c1-1`
+		if [ "$kernel_version" -ge "5" ]; then
+			mkdir functions/ffs.diag
+		fi
+
 		if [ ! -s "/etc/adb_devid" ]
 		then
 			echo $serialno > /etc/adb_devid
@@ -119,6 +125,12 @@ case "$1" in
 	# mount functionfs
 	mkdir -p /dev/usb-ffs/adb
 	mount -o uid=2000,gid=2000 -t functionfs adb /dev/usb-ffs/adb
+
+	if [ -e /sys/kernel/config/usb_gadget/g1/functions/ffs.diag ]; then
+		mkdir -p /dev/ffs-diag
+		mount -o uid=2000,gid=2000 -t functionfs diag /dev/ffs-diag
+	fi
+
 	mount -o remount,gid=5,mode=620 /dev/pts
 
 	case `source /sbin/usb/target` in
