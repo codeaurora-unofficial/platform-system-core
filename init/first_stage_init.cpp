@@ -122,15 +122,23 @@ int FirstStageMain(int argc, char** argv) {
     CHECKCALL(mkdir("/dev/socket", 0755));
     CHECKCALL(mount("devpts", "/dev/pts", "devpts", 0, NULL));
 #define MAKE_STR(x) __STRING(x)
+    #ifdef ENABLE_EARLY_SERVICES
+    CHECKCALL(mount("proc", "/proc", "proc", MS_REMOUNT, "hidepid=2,gid=" MAKE_STR(AID_READPROC)));
+    #else
     CHECKCALL(mount("proc", "/proc", "proc", 0, "hidepid=2,gid=" MAKE_STR(AID_READPROC)));
+    #endif
 #undef MAKE_STR
     // Don't expose the raw commandline to unprivileged processes.
     CHECKCALL(chmod("/proc/cmdline", 0440));
     gid_t groups[] = {AID_READPROC};
     CHECKCALL(setgroups(arraysize(groups), groups));
+    #ifdef ENABLE_EARLY_SERVICES
+    mount("sysfs", "/sys", "sysfs", 0, NULL);
+    mount("selinuxfs", "/sys/fs/selinux", "selinuxfs", 0, NULL);
+    #else
     CHECKCALL(mount("sysfs", "/sys", "sysfs", 0, NULL));
     CHECKCALL(mount("selinuxfs", "/sys/fs/selinux", "selinuxfs", 0, NULL));
-
+    #endif
     CHECKCALL(mknod("/dev/kmsg", S_IFCHR | 0600, makedev(1, 11)));
 
     if constexpr (WORLD_WRITABLE_KMSG) {

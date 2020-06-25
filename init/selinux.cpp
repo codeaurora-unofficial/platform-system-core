@@ -534,7 +534,7 @@ int SetupSelinux(char** argv) {
     if (selinux_android_restorecon("/system/bin/init", 0) == -1) {
         PLOG(FATAL) << "restorecon failed of /system/bin/init failed";
     }
-
+    setexeccon("u:r:init:s0");
     const char* path = "/system/bin/init";
     const char* args[] = {path, "second_stage", nullptr};
     execv(path, const_cast<char**>(args));
