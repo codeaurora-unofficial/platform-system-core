@@ -129,6 +129,9 @@ case "$1" in
 				mkdir functions/mdm_data.edl
 				echo 1 > functions/mdm_data.edl/in_ep
 				echo 1 > functions/mdm_data.edl/out_ep
+				mkdir functions/mdm_data.diag
+				echo 1 > functions/mdm_data.diag/in_ep
+				echo 1 > functions/mdm_data.diag/out_ep
 				;;
 		esac
 
