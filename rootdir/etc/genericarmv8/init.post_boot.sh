@@ -27,4 +27,6 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-# Empty file
+echo -n "Starting post boot settings "
+sleep 2
+echo mem > /sys/power/autosleep
