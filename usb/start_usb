@@ -355,6 +355,8 @@ case "$1" in
 		else
 			/sbin/usb/compositions/$pid n $adbd_params
 		fi
+
+		echo -n "usb.service initialized successfully" > /dev/kmsg
 	fi
 	;;
 
@@ -364,6 +366,7 @@ case "$1" in
 		echo "Starting USB Android Gadget"
 		rm -f /data/usb_bind_in_progress
 		echo $udcname > /sys/kernel/config/usb_gadget/g1/UDC
+		echo -n "usb.service started successfully" > /dev/kmsg
 	fi
 	;;
 
@@ -372,6 +375,7 @@ case "$1" in
 		echo "Stopping USB Android Gadget"
 		echo start > /data/usb_bind_in_progress
 		echo none > /sys/kernel/config/usb_gadget/g1/UDC
+		echo -n "usb.service stopped successfully" > /dev/kmsg
 	fi
         ;;
 
