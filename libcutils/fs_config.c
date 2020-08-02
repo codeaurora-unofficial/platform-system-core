@@ -174,7 +174,6 @@ static const struct fs_path_config android_files[] = {
     { 00600, AID_ROOT,      AID_ROOT,      0, "system/etc/gshadow" },
     { 00750, AID_ROOT,      AID_ROOT,      0, "system/etc/init.d/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/ipk-postinsts/*" },
-    { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/launch_adbd" },
     { 00711, AID_ROOT,      AID_ROOT,      0, "system/etc/mdev/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/network/if-down-up.d/*" },
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/etc/network/if-post-down.d/*" },
@@ -226,6 +225,7 @@ static const struct fs_path_config android_files[] = {
 
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/sbin/halt.sysvinit" },
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/sbin/shutdown.sysvinit" },
+    { 00755, AID_ROOT,      AID_ROOT,      0, "system/sbin/launch_adbd" },
 
     { 00755, AID_ROOT,      AID_ROOT,      0, "system/usr/tests/*" },
     { 04755, AID_ROOT,      AID_ROOT,      0, "system/usr/bin/chage" },

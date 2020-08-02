@@ -100,7 +100,7 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		/etc/launch_adbd start
+		/sbin/launch_adbd start
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1

@@ -36,14 +36,14 @@ case "$1" in
         echo -n "pcie=true" > /data/adb.conf
 
         pkill adbd
-        /etc/launch_adbd
+        /sbin/launch_adbd
 		;;
   usb)
         echo -n "Starting adbd over usb:  " > /dev/kmsg
         echo -n "pcie=false" > /data/adb.conf
 
         pkill adbd
-        /etc/launch_adbd
+        /sbin/launch_adbd
         ;;
   *)
         echo "Usage launch_adbd_pcie { pcie | usb }" >&2
