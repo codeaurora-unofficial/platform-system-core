@@ -26,7 +26,7 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 
 [Unit]
-SourcePath=/etc/initscripts/usb
+SourcePath=/sbin/start_usb
 Description=usb Service
 After=sysinit.target start_stop_ipa_fws.service etc.mount
 DefaultDependencies=no
@@ -35,5 +35,5 @@ DefaultDependencies=no
 Type=oneshot
 Environment="adbd_params=0 y"
 RemainAfterExit=yes
-ExecStart=/etc/initscripts/usb init
+ExecStart=/sbin/start_usb init
 Nice=-5
