@@ -36,7 +36,7 @@ case "$1" in
 	enabled=`cat /sys/bus/platform/devices/qcom_gadget/enabled`
 	if [ "$enabled" == "Y" ]
 	then
-		exit 1
+		exit 0
 	fi
 
 	if [ -d /sys/class/android_usb/android0/f_ffs ]
