@@ -96,7 +96,7 @@ run_9x35() {
 	echo 1 > /sys/class/android_usb/android$num/enable
 	if [ $from_adb = "n" ]
 	then
-		/etc/launch_adbd start
+		/sbin/launch_adbd start
 	fi
 }
 
@@ -119,7 +119,7 @@ run_9607() {
 	echo 1 > /sys/class/android_usb/android$num/enable
 	if [ $from_adb = "n" ]
 	then
-		/etc/launch_adbd start
+		/sbin/launch_adbd start
 	fi
 }
 
@@ -142,7 +142,7 @@ run_9650() {
 	echo 1 > /sys/class/android_usb/android$num/enable
 	if [ $from_adb = "n" ]
 	then
-		/etc/launch_adbd start
+		/sbin/launch_adbd start
 	fi
 }
 
@@ -151,7 +151,7 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		/etc/launch_adbd start
+		/sbin/launch_adbd start
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
@@ -200,7 +200,7 @@ case `source /sbin/usb/target` in
 	*sdx20* )
 		run_9650 "glink" &
 		;;
-	*sdxpoorwills* | *sdxprairie* )
+	*sdxpoorwills* | *sdxprairie* | *sdxlemur* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;

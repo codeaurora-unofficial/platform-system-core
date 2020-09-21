@@ -39,7 +39,7 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		/etc/launch_adbd start
+		/sbin/launch_adbd start
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
@@ -71,7 +71,7 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	*sdxpoorwills* | *sdxprairie* )
+	*sdxpoorwills* | *sdxprairie* | *sdxlemur* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
