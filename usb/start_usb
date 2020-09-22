@@ -43,7 +43,7 @@ case "$1" in
 	enabled=`cat /sys/bus/platform/devices/qcom_gadget/enabled`
 	if [ "$enabled" == "Y" ]; then
 		if [ "$SOFTAP_W_DUN" == "N" ]; then
-			exit 1
+			exit 0
 		else
 			echo "SOFTAP + DUN is enabled, disabling qcom_gadget" > /dev/kmsg
 			echo 0 > /sys/bus/platform/devices/qcom_gadget/enabled
@@ -132,6 +132,14 @@ case "$1" in
 				mkdir functions/mdm_data.diag
 				echo 1 > functions/mdm_data.diag/in_ep
 				echo 1 > functions/mdm_data.diag/out_ep
+				mkdir functions/mdm_data.rmnet
+				echo 1 > functions/mdm_data.rmnet/in_ep
+				echo 1 > functions/mdm_data.rmnet/out_ep
+				echo 1 > functions/mdm_data.rmnet/int_ep
+				mkdir functions/mdm_data.serial
+				echo 1 > functions/mdm_data.serial/in_ep
+				echo 1 > functions/mdm_data.serial/out_ep
+				echo 1 > functions/mdm_data.serial/int_ep
 				;;
 		esac
 
