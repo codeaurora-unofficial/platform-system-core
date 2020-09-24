@@ -84,6 +84,9 @@ case `cat ${TARGET_DIR}` in
 	*sdxprairie* | *sa515m* )
 		res="sdxprairie";
 		;;
+	*sdxlemur* )
+		res="sdxlemur";
+		;;
 	*8150* | *8155* )
 		res="sm8150";
 		;;
