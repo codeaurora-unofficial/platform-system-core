@@ -156,7 +156,7 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*sdxpoorwills* | *sdxprairie* )
+		*sdxpoorwills* | *sdxprairie* | *sdxlemur* )
 			if [ -e /dev/mhi_ctrl ]; then
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
