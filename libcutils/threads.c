@@ -37,7 +37,9 @@ pid_t gettid() {
 #if defined(__APPLE__)
   return syscall(SYS_thread_selfid);
 #elif defined(__linux__)
+#if defined(__GLIBC__) && !__GLIBC_PREREQ(2, 30)
   return syscall(__NR_gettid);
+#endif
 #elif defined(_WIN32)
   return GetCurrentThreadId();
 #endif
