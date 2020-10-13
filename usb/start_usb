@@ -108,6 +108,9 @@ case "$1" in
 		cat /etc/adb_devid > strings/0x409/serialnumber
 		echo "QCOM" > strings/0x409/manufacturer
 		echo "$product_string" > strings/0x409/product
+		if [ -e functions/diag.diag/serial ]; then
+			echo "$serialno" > functions/diag.diag/serial
+		fi
 
 		# correct SELinux labels on new /dev nodes
 		if [ -x /sbin/restorecon ]

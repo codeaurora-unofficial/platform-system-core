@@ -61,6 +61,9 @@ run_configfs() {
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
 	echo 0x90E5 > idProduct
+	if [ -e functions/diag.diag/pid ]; then
+		echo 0x90E5 > functions/diag.diag/pid
+	fi
 	echo "diag_diag_mdm_qdss_qdss_mdm_dun_dpl_rmnet_adb" > configs/c.1/strings/0x409/configuration
 	if [ -e functions/ffs.diag ]; then
 		ln -s functions/ffs.diag configs/c.1/f1
