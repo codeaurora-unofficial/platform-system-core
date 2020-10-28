@@ -284,16 +284,22 @@ if [ $common != "0" ]; then
 	echo "******************************************************************************"
 fi
 
+MAC_Addr=`cat /sys/module/usb_f_gsi/parameters/gsi_host_addr`
+
 if [ $persistent = "y" ]; then
 	if [ $hsic = "y" ]; then
 		echo "$local_pid" > $symlink_hsic
 	else
+		if [ "$MAC_Addr" == "(null)" ] || [ "$MAC_Addr" == "" ]; then
+			echo "Warning: MAC address not specified, using random address!\n"
+		fi
+
 		echo "$local_pid" > $symlink_hsusb
 		# find mtd number of usb_qti partition
 		usb_qti_partition=`cat /proc/mtd | grep "usb_qti" | cut -d ":" -f1`
 		if [ "$usb_qti_partition" != "" ]; then
 			flash_erase -q /dev/$usb_qti_partition 0 4
-			printf "USB_COMP!,pid=$local_pid,product_string=$cmdline_product_string\0" > /tmp/data/usb_qti_comp
+			printf "USB_COMP!,pid=$local_pid,product_string=$cmdline_product_string,gsi_host_addr=$MAC_Addr\0" > /tmp/data/usb_qti_comp
 			nandwrite -q -p /dev/$usb_qti_partition /tmp/data/usb_qti_comp
 		fi
 	fi
