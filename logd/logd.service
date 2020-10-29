@@ -32,6 +32,7 @@
 # and socket permissions are set here for other services can have proper Before and After.
 
 [Unit]
+Requires=earlyinit-logd.service
 After=earlyinit-logd.service
 Description=logd logging service
 
