@@ -83,6 +83,10 @@ LOCAL_POST_INSTALL_CMD := mkdir -p \
     $(TARGET_RAMDISK_OUT)/proc \
     $(TARGET_RAMDISK_OUT)/sys \
 
+ifeq ($(BOARD_SUPPORTS_EARLY_INIT),true)
+LOCAL_POST_INSTALL_CMD += mkdir -p $(TARGET_RAMDISK_OUT)/early_services
+endif
+
 LOCAL_STATIC_LIBRARIES := \
     libc++fs \
     libfs_avb \

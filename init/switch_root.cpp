@@ -73,12 +73,20 @@ void SwitchRoot(const std::string& new_root) {
     auto mounts = GetMounts(new_root);
 
     LOG(INFO) << "Switching root to '" << new_root << "'";
+    const std::string sEarlyServices = "/early_services";
 
     for (const auto& mount_path : mounts) {
         auto new_mount_path = new_root + mount_path;
-        mkdir(new_mount_path.c_str(), 0755);
-        if (mount(mount_path.c_str(), new_mount_path.c_str(), nullptr, MS_MOVE, nullptr) != 0) {
-            PLOG(FATAL) << "Unable to move mount at '" << mount_path << "'";
+        if(mount_path == sEarlyServices){
+            mkdir(new_mount_path.c_str(), 0755);
+            if (mount(mount_path.c_str(), new_mount_path.c_str(), nullptr, MS_BIND | MS_REC, nullptr) != 0) {
+                PLOG(FATAL) << "Unable to bind mount at '" << mount_path << "'";
+            }
+        } else {
+            mkdir(new_mount_path.c_str(), 0755);
+            if (mount(mount_path.c_str(), new_mount_path.c_str(), nullptr, MS_MOVE, nullptr) != 0) {
+                PLOG(FATAL) << "Unable to move mount at '" << mount_path << "'";
+            }
         }
     }
 
