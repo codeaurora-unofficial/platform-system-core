@@ -71,7 +71,7 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	*qcs40x* )
+	*qcs40x* | *qcs610* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
