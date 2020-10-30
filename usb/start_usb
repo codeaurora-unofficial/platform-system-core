@@ -269,7 +269,7 @@ case "$1" in
 		then
                     pid = "901D"
 		fi
-		/sbin/usb/compositions/$pid n $adbd_params
+                usb_composition 9020
 
 		if [ "$SOFTAP_W_DUN" == "Y" ]
 		then
