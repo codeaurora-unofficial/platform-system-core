@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2014-2015,2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2014-2015,2017-2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -175,7 +175,11 @@ run_configfs() {
 	echo "DIAG_ADB_SER_NMEA_QDSS_RMNET" > configs/c.1/strings/0x409/configuration
 	echo "ECM" > configs/c.2/strings/0x409/configuration
 	echo "MBIM" > configs/c.3/strings/0x409/configuration
-	ln -s functions/diag.diag configs/c.1/f1
+	if [ -e functions/ffs.diag ]; then
+		ln -s functions/ffs.diag configs/c.1/f1
+	else
+		ln -s functions/diag.diag configs/c.1/f1
+	fi
 	ln -s functions/ffs.adb configs/c.1/f2
 	ln -s functions/cser.dun.0 configs/c.1/f3
 	ln -s functions/cser.nmea.1 configs/c.1/f4
