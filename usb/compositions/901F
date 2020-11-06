@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2018, The Linux Foundation. All rights reserved.
+# Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -100,7 +100,11 @@ run_configfs() {
 	echo 0x05c6 > idVendor
 	echo 0x901F > idProduct
 	echo "DIAG_ADB_DUN" > configs/c.1/strings/0x409/configuration
-	ln -s functions/diag.diag configs/c.1/f1
+	if [ -e functions/ffs.diag ]; then
+		ln -s functions/ffs.diag configs/c.1/f1
+	else
+		ln -s functions/diag.diag configs/c.1/f1
+	fi
 	ln -s functions/ffs.adb configs/c.1/f2
 	if [ -f /etc/data/usb/softap_w_dun ]
 	then
