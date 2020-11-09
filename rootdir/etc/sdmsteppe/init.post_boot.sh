@@ -151,7 +151,7 @@ else
 fi
 
 case "$target" in
-    "sm6150" | "qcs610")
+    "sm6150" | "qcs610" | "qcs410")
 
     # Set the default IRQ affinity to the silver cluster. When a
     # CPU is isolated/hotplugged, the IRQ affinity is adjusted
