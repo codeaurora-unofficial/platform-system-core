@@ -32,14 +32,17 @@ echo -n "Starting init_early_boot: [$target] "
 
 case "$target" in
     "sa8155p" | "sa8155" )
-        echo 902400000 > /sys/class/devfreq/soc:qcom,cpu0-cpu-l3-lat/min_freq
-        echo 1612800000 > /sys/class/devfreq/soc:qcom,cpu0-cpu-l3-lat/max_freq
-        echo 902400000 > /sys/class/devfreq/soc:qcom,cpu4-cpu-l3-lat/min_freq
-        echo 1612800000 > /sys/class/devfreq/soc:qcom,cpu4-cpu-l3-lat/max_freq
+        for l3lat in /sys/class/devfreq/*qcom,cpu*-cpu-l3-lat
+        do
+            echo  902400000 > $l3lat/min_freq
+            echo 1612800000 > $l3lat/max_freq
+        done
         ;;
     "sa8195p" )
-        echo 940800000 > /sys/class/devfreq/soc:qcom,cpu0-cpu-l3-lat/min_freq
-        echo 940800000 > /sys/class/devfreq/soc:qcom,cpu4-cpu-l3-lat/min_freq
+        for l3lat in /sys/class/devfreq/*qcom,cpu*-cpu-l3-lat
+        do
+            echo 940800000 > $l3lat/min_freq
+        done
         ;;
     *)
         ;;
