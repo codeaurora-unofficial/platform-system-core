@@ -123,7 +123,14 @@ int FirstStageMain(int argc, char** argv) {
     CHECKCALL(mount("devpts", "/dev/pts", "devpts", 0, NULL));
 #define MAKE_STR(x) __STRING(x)
     #ifdef ENABLE_EARLY_SERVICES
-    CHECKCALL(mount("proc", "/proc", "proc", MS_REMOUNT, "hidepid=2,gid=" MAKE_STR(AID_READPROC)));
+     if (0 == access("/proc/cmdline", F_OK))
+     {
+     CHECKCALL(mount("proc", "/proc", "proc", MS_REMOUNT, "hidepid=2,gid=" MAKE_STR(AID_READPROC)));
+     }
+     else
+     {
+     CHECKCALL(mount("proc", "/proc", "proc", 0, "hidepid=2,gid=" MAKE_STR(AID_READPROC)));
+     }
     #else
     CHECKCALL(mount("proc", "/proc", "proc", 0, "hidepid=2,gid=" MAKE_STR(AID_READPROC)));
     #endif
