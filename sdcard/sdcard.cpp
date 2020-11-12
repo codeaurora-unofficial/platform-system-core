@@ -317,7 +317,7 @@ int main(int argc, char **argv) {
 
     while ((fs_read_atomic_int("/data/.layout_version", &fs_version) == -1) || (fs_version < 3)) {
         LOG(ERROR) << "installd fs upgrade not yet complete; waiting...";
-        sleep(60);
+        sleep(1);
     }
 
     run_sdcardfs(source_path, label, uid, gid, userid, multi_user, full_write, derive_gid,
