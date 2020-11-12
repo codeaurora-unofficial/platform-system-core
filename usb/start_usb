@@ -93,7 +93,7 @@ case "$1" in
 		mkdir functions/rndis.rndis
 		mkdir functions/ipc.ipc
 
-		kernel_version=`uname -r | cut -c1-1`
+		kernel_version=${KERNEL%%.*}
 		if [ "$kernel_version" -ge "5" ]; then
 			mkdir functions/ffs.diag
 		fi
@@ -128,7 +128,7 @@ case "$1" in
 
 	if [ -e /sys/kernel/config/usb_gadget/g1/functions/ffs.diag ]; then
 		mkdir -p /dev/ffs-diag
-		mount -o uid=2000,gid=2000 -t functionfs diag /dev/ffs-diag
+		mount -o uid=2000,gid=2000,no_disconnect=1 -t functionfs diag /dev/ffs-diag
 	fi
 
 	mount -o remount,gid=5,mode=620 /dev/pts
