@@ -24,21 +24,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# DESCRIPTION: DIAG + UAC1 + ADB
+# DESCRIPTION: DIAG + UAC1 + UVC
 
-echo "Switching to composition number 0x9108" > /dev/kmsg
-
-if [ "$1" = "y" ]; then
-	num="1"
-else
-	num="0"
-fi
-
-if [ "$#" -ge 2 ]; then
-	delay=$2
-else
-	delay="0"
-fi
+echo "Switching to composition number 0x9114"  > /dev/kmsg
 
 if [ "$#" -ge 3 ]; then
 	from_adb=$3
@@ -51,19 +39,17 @@ run_configfs() {
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		# Give enough time to restart ADBD and open EP0 file node
-		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
 	rm os_desc/c* 2> /dev/null
 	rm configs/c*/f* 2> /dev/null
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
-	echo 0x9108 > idProduct
-	echo "DIAG_UAC1_ADB" > configs/c.1/strings/0x409/configuration
+	echo 0x9114 > idProduct
+	echo "DIAG_UAC1_UVC" > configs/c.1/strings/0x409/configuration
 	ln -s functions/diag.diag configs/c.1/f1
 	ln -s functions/uac1.uac1 configs/c.1/f2
-	ln -s functions/ffs.adb configs/c.1/f3
+	ln -s functions/uvc.0 configs/c.1/f3
 	rm -f /data/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
@@ -71,11 +57,11 @@ run_configfs() {
 }
 
 case `source /sbin/usb/target` in
-	*qcs40x* | *qcs610* )
+	*qcs610* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
-        * )
+	* )
 		echo "This composition is not supported"
 		;;
 esac
