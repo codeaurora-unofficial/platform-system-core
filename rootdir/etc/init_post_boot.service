@@ -29,6 +29,7 @@
 [Unit]
 SourcePath=/etc/initscripts/init_post_boot
 Description=QTI Post Boot Service
+ConditionVirtualization=!container
 After=multi-user.target
 
 [Service]
