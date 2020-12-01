@@ -169,6 +169,9 @@ run_configfs() {
 	mkdir configs/c.3/strings/0x409
 	echo 0x05c6 > idVendor
 	echo 0x90A9 > idProduct
+	if [ -e functions/diag.diag/pid ]; then
+		echo 0x90A9 > functions/diag.diag/pid
+	fi
 	echo 239 > bDeviceClass
 	echo 2 > bDeviceSubClass
 	echo 1 > bDeviceProtocol
