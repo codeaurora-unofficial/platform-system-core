@@ -26,7 +26,7 @@
 
 # DESCRIPTION: DIAG + ADB + UAC2 + UVC
 
-echo "Switching to composition number 0x90CB"  > /dev/kmsg
+echo "Switching to composition number 0x90CC"  > /dev/kmsg
 
 if [ "$#" -ge 3 ]; then
 	from_adb=$3
