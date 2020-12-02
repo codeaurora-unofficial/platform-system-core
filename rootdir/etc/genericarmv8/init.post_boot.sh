@@ -27,6 +27,7 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+echo "4 4 1 4" > /proc/sys/kernel/printk
 echo -n "Starting post boot settings "
 sleep 2
 echo mem > /sys/power/autosleep
