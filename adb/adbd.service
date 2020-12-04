@@ -36,5 +36,6 @@ DefaultDependencies=no
 Type=forking
 KillMode=process
 Restart=always
+ExecStartPre=/bin/chmod 777 /sys/kernel/config/usb_gadget/g1/UDC
 ExecStart=/sbin/launch_adbd start
 Nice=-5
