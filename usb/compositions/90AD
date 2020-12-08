@@ -133,7 +133,7 @@ run_sdx20() {
 }
 
 run_configfs() {
-	echo start > /data/usb_bind_in_progress
+	echo start > /tmp/usb_bind_in_progress
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
@@ -161,7 +161,7 @@ run_configfs() {
 	ln -s functions/gsi.rmnet configs/c.1/f5
 	ln -s functions/mass_storage.0 configs/c.1/f6
 	ln -s functions/gsi.dpl configs/c.1/f7
-	rm -f /data/usb_bind_in_progress
+	rm -f /tmp/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
