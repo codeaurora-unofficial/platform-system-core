@@ -391,6 +391,14 @@ case "$1" in
          esac
 
          case "$soc_id" in
+         "458")
+                echo -n "Starting powerconfig for SDXLEMUR: "
+                echo N > /sys/module/lpm_levels/parameters/sleep_disabled
+                echo "done";
+                ;;
+         esac
+
+         case "$soc_id" in
          "116" | "142" | "154")
                 echo -n "Starting powerconfig for 8x30: "
                 echo 1 > /sys/module/pm_8x60/modes/cpu0/power_collapse/suspend_enabled
