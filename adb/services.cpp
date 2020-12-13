@@ -518,9 +518,17 @@ int service_to_fd(const char *name)
             }
         }
     } else if(!strncmp(name, "disable-verity:", 15)) {
+#ifndef ADB_AVB20
         ret = create_service_thread(set_verity_enabled_state_service_le, (void*)0);
+#else
+        ret = create_service_thread(set_verity_enabled_state_service_avb20, (void*)0);
+#endif
     } else if(!strncmp(name, "enable-verity:", 15)) {
+#ifndef ADB_AVB20
         ret = create_service_thread(set_verity_enabled_state_service_le, (void*)1);
+#else
+        ret = create_service_thread(set_verity_enabled_state_service_avb20, (void*)1);
+#endif
 #endif
     }
     if (ret >= 0) {

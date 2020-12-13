@@ -290,6 +290,7 @@ int handle_forward_request(const char* service, transport_type ttype, char* seri
 void framebuffer_service(int fd, void *cookie);
 void set_verity_enabled_state_service(int fd, void* cookie);
 void set_verity_enabled_state_service_le(int fd, void* cookie);
+void set_verity_enabled_state_service_avb20(int fd, void* cookie);
 #endif
 
 /* packet allocator */

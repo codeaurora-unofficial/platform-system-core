@@ -76,6 +76,9 @@ adbd_CPPFLAGS += -DADB_REBOOT_ENABLED=1
 adbd_CPPFLAGS += -DALLOW_ADBD_DISABLE_VERITY=1
 adbd_CPPFLAGS += -DUSE_GLIB -Dstrlcat=g_strlcat @GLIB_CFLAGS@
 
+if ADB_AVB20
+adbd_CPPFLAGS += -DADB_AVB20=1
+endif
 adbd_LDADD   := libadbd.la
 adbd_LDADD   += ../fs_mgr/libfs_mgr.la
 adbd_LDFLAGS := -lcutils -lresolv -lmincrypt -lselinux -lbase

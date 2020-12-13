@@ -195,6 +195,110 @@ void set_verity_enabled_state_service_le(int fd, void* cookie)
                    enable ? "enable" : "disable");
     }
 }
+
+/* Converts unsigned integer from big-endian to host byte order. */
+static uint32_t _be32toh(uint32_t in) {
+  uint8_t* b = (uint8_t*)&in;
+  uint32_t out;
+  out = ((uint32_t)b[0]) << 24;
+  out |= ((uint32_t)b[1]) << 16;
+  out |= ((uint32_t)b[2]) << 8;
+  out |= ((uint32_t)b[3]);
+  return out;
+}
+
+/* Converts unsigned integer from host to big-endian byte order. */
+static uint32_t _htobe32(uint32_t in) {
+  union {
+    uint32_t i;
+    uint8_t b[4];
+  } out;
+  out.b[0] = (in >> 24) & 0xff;
+  out.b[1] = (in >> 16) & 0xff;
+  out.b[2] = (in >> 8) & 0xff;
+  out.b[3] = in & 0xff;
+  return out.i;
+}
+
+void set_verity_enabled_state_service_avb20(int fd, void* cookie)
+{
+    FILE *fp;
+    bool enable = (cookie != NULL);
+    int device = -1;
+    const int vbmeta_hdr_size = 256;
+    const int vbmeta_hdr_flags_offset = 120;
+    uint32_t vbmeta_hashtree_disable_mask = 0x1;
+    uint32_t flags, new_flags = 0;
+    bool hashtree_disable_flag;
+    char vbmeta_hdr[vbmeta_hdr_size];
+    char propbuf[PROPERTY_VALUE_MAX];
+    bool any_changed = false;
+
+    if (kAllowDisableVerity) {
+
+        property_get("vbmeta.device", propbuf, "");
+        if (!strcmp(propbuf, "")) {
+            WriteFdFmt(fd, "vbmeta.device property not available.\n");
+            goto errout;
+        }
+
+        device = adb_open(propbuf, O_RDWR | O_CLOEXEC);
+        if (device == -1) {
+            WriteFdFmt(fd, "Could not open block device %s (%s).\n", propbuf, strerror(errno));
+            goto errout;
+        }
+
+        if (adb_read(device, &vbmeta_hdr[0], sizeof(vbmeta_hdr)) != sizeof(vbmeta_hdr)) {
+            WriteFdFmt(fd, "Couldn't read device!\n");
+            goto errout;
+        }
+
+        flags = _be32toh(*(uint32_t*)&vbmeta_hdr[vbmeta_hdr_flags_offset]);
+        hashtree_disable_flag = (bool)(flags & vbmeta_hashtree_disable_mask);
+
+        if (hashtree_disable_flag & enable || !hashtree_disable_flag & !enable) {
+            any_changed = true;
+        }
+
+        if (any_changed) {
+            if (enable) {
+                // Enable verity by clearing HASHTREE_DISABLE_FLAG
+                new_flags = flags & ~vbmeta_hashtree_disable_mask;
+            }
+            else {
+                // Disable verity by setting HASHTREE_DISABLE_FLAG
+                new_flags = flags | vbmeta_hashtree_disable_mask;
+            }
+            new_flags = _htobe32(new_flags);
+
+            if (lseek64(device, vbmeta_hdr_flags_offset, SEEK_SET) < 0) {
+                WriteFdFmt(fd, "Could not seek to flags offset in vbmeta.\n");
+                goto errout;
+            }
+
+            if (adb_write(device, &new_flags, sizeof(new_flags)) != sizeof(new_flags)) {
+                WriteFdFmt(fd, "Could not set verity %s flag on device %s with error %s\n",
+                           enable ? "enabled" : "disabled",
+                           propbuf, strerror(errno));
+                goto errout;
+            }
+
+            WriteFdFmt(fd, "Verity %s \n", enable ? "enabled" : "disabled");
+            WriteFdFmt(fd, "Now reboot your device for settings to take effect\n");
+        } else {
+            WriteFdFmt(fd, "Verity is already %s \n", enable ? "enabled" : "disabled");
+        }
+
+    } else {
+        WriteFdFmt(fd, "%s-verity only works for userdebug builds\n",
+                   enable ? "enable" : "disable");
+    }
+
+    errout:
+    if (device != -1)
+        adb_close(device);
+}
+
 void set_verity_enabled_state_service(int fd, void* cookie)
 {
     bool enable = (cookie != NULL);
