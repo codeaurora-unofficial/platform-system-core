@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012-2015,2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2012-2015,2017,2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -115,11 +115,11 @@ run_9650() {
 }
 
 run_configfs() {
-	echo start > /data/usb_bind_in_progress
+	echo start > /tmp/usb_bind_in_progress
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
-		/sbin/launch_adbd start
+		# Give enough time to restart ADBD and open EP0 file node
 		sleep 1
 	fi
 	cd /sys/kernel/config/usb_gadget/g1
@@ -132,7 +132,7 @@ run_configfs() {
 	ln -s functions/gsi.rndis configs/c.1/f1
 	ln -s functions/ffs.adb configs/c.1/f2
 	echo 0xA0 > configs/c.1/bmAttributes
-	rm -f /data/usb_bind_in_progress
+	rm -f /tmp/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
