@@ -53,10 +53,19 @@ else
       echo $serial_no > /etc/adb_devid
 fi
 sync
-sleep 1
 # If UDC is not set up set it up.
 udcname=`ls -1 /sys/class/udc | head -n 1`
-echo $udcname > /sys/kernel/config/usb_gadget/g1/UDC
+t=0
+while [ "$udcname" != "$(cat /sys/kernel/config/usb_gadget/g1/UDC)" ]
+do
+      sleep 0.1
+      echo $udcname > /sys/kernel/config/usb_gadget/g1/UDC
+      t=$(( $t + 1 ))
+      if [ "$t" -eq 15 ]; then
+          echo "$0: Unable setup UDC" > /dev/kmsg
+          break
+      fi
+done
 
 echo -n "Started adbd. " > /dev/kmsg
 
