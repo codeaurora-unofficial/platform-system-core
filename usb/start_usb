@@ -117,7 +117,7 @@ case "$1" in
 		cd /
 	fi
 
-	if [ -d /sys/class/android_usb/android0 ]
+	if [ -f /sys/class/android_usb/android0/iProduct ]
 	then
 		echo "$product_string" > /sys/class/android_usb/android0/iProduct
 	fi
