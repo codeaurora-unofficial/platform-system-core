@@ -289,7 +289,12 @@ static int create_subproc_pty(const char *cmd, const char *arg0, const char *arg
         adb_close(pts);
         adb_close(ptm);
 
-        execl(cmd, cmd, arg0, arg1, NULL);
+        if (getuid() == 0) {
+            const char *argl = "-l";
+            execl(cmd, cmd, argl, arg0, arg1, NULL);
+        } else {
+            execl(cmd, cmd, arg0, arg1, NULL);
+        }
         fprintf(stderr, "- exec '%s' failed: %s (%d) -\n",
                 cmd, strerror(errno), errno);
         exit(-1);
@@ -344,6 +349,7 @@ static int create_subproc_raw(const char *cmd, const char *arg0, const char *arg
 #endif /* !defined(_WIN32) */
 }
 #endif  /* !ABD_HOST */
+#define SHELL_COMMAND_SU "/bin/su"
 #define SHELL_COMMAND "/bin/sh"
 #if !ADB_HOST
 static void subproc_waiter_service(int fd, void *cookie)
@@ -385,17 +391,29 @@ static int create_subproc_thread(const char *name, const subproc_mode mode)
 
     const char *arg0, *arg1;
     if (name == 0 || *name == 0) {
-        arg0 = "-"; arg1 = 0;
+        if (getuid() == 0) {
+            arg0 = 0; arg1 = 0;
+        } else {
+            arg0 = "-"; arg1 = 0;
+        }
     } else {
         arg0 = "-c"; arg1 = name;
     }
 
     switch (mode) {
     case SUBPROC_PTY:
-        ret_fd = create_subproc_pty(SHELL_COMMAND, arg0, arg1, &pid);
+        if (getuid() == 0) {
+            ret_fd = create_subproc_pty(SHELL_COMMAND_SU, arg0, arg1, &pid);
+        } else {
+            ret_fd = create_subproc_pty(SHELL_COMMAND, arg0, arg1, &pid);
+        }
         break;
     case SUBPROC_RAW:
-        ret_fd = create_subproc_raw(SHELL_COMMAND, arg0, arg1, &pid);
+        if (getuid() == 0) {
+            ret_fd = create_subproc_raw(SHELL_COMMAND_SU, arg0, arg1, &pid);
+        } else {
+            ret_fd = create_subproc_raw(SHELL_COMMAND, arg0, arg1, &pid);
+        }
         break;
     default:
         fprintf(stderr, "invalid subproc_mode %d\n", mode);
