@@ -28,6 +28,7 @@
 [Unit]
 SourcePath=/etc/initscripts/usb
 Description=usb Service
+ConditionVirtualization=!container
 After=systemrw.mount start_stop_ipa_fws.service
 Requires=systemrw.mount
 RequiresMountsFor=/systemrw

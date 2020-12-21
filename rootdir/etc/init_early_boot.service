@@ -29,6 +29,7 @@
 [Unit]
 SourcePath=/etc/initscripts/init_early_boot
 Description=QTI Early Boot Service
+ConditionVirtualization=!container
 
 [Service]
 Type=oneshot

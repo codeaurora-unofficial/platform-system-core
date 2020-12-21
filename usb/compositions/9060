@@ -46,6 +46,12 @@ else
 	from_adb="n"
 fi
 
+if [ -f /sys/class/android_usb/android$num/enable ]; then
+	configfs_supported="n"
+else
+	configfs_supported="y"
+fi
+
 run_9x25() {
 	echo 0 > /sys/class/android_usb/android$num/enable
 	echo 0x9060 > /sys/class/android_usb/android$num/idProduct
@@ -113,26 +119,12 @@ case `source /sbin/usb/target` in
 	*9x25* )
 		run_9x25 &
 		;;
-	*9x35* )
-		run_9x35 &
-		;;
-	*9607* )
-		run_9x35 &
-		;;
-	*8909* )
-		run_9x35 &
-		;;
-	*9640* )
-		run_9x35 &
-		;;
-	*9650* )
-		run_9x35 &
-		;;
-	*sdxpoorwills* | *sdxprairie* )
-		udcname=`ls -1 /sys/class/udc | head -n 1`
-		run_configfs $udcname &
-		;;
 	* )
-		run_9x35 &
+		if [ $configfs_supported = "y" ]; then
+			udcname=`ls -1 /sys/class/udc | head -n 1`
+			run_configfs $udcname &
+		else
+			run_9x35 &
+		fi
 		;;
 esac
