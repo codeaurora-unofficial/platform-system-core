@@ -397,7 +397,7 @@ err:
     return;
 }
 
-#define USB_COMPOSITION_BIND_LOCK "/data/usb_bind_in_progress"
+#define USB_COMPOSITION_BIND_LOCK "/tmp/usb_bind_in_progress"
 #define UDC_DIR "/sys/class/udc"
 #define UDC_FILE_PATH "/sys/kernel/config/usb_gadget/g1/UDC"
 
