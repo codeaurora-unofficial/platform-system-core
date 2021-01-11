@@ -49,7 +49,7 @@ else
 fi
 
 run_configfs() {
-	echo start > /data/usb_bind_in_progress
+	echo start > /tmp/usb_bind_in_progress
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
@@ -61,6 +61,9 @@ run_configfs() {
 	rm -rf configs/c.2 configs/c.3 2> /dev/null
 	echo 0x05c6 > idVendor
 	echo 0x90E5 > idProduct
+	if [ -e functions/diag.diag/pid ]; then
+		echo 0x90E5 > functions/diag.diag/pid
+	fi
 	echo "diag_diag_mdm_qdss_qdss_mdm_dun_dpl_rmnet_adb" > configs/c.1/strings/0x409/configuration
 	if [ -e functions/ffs.diag ]; then
 		ln -s functions/ffs.diag configs/c.1/f1
@@ -75,14 +78,14 @@ run_configfs() {
 	ln -s functions/gsi.rmnet configs/c.1/f7
 	ln -s functions/ffs.adb configs/c.1/f8
 	echo 0xA0 > configs/c.1/bmAttributes
-	rm -f /data/usb_bind_in_progress
+	rm -f /tmp/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
 }
 
 case `source /sbin/usb/target` in
-	*sdxprairie* | *sdxlemur* )
+	*sdxprairie* | *sdxlemur* | *sdxnightjar* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;

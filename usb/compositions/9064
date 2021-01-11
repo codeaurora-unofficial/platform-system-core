@@ -194,7 +194,7 @@ run_sdx20() {
 }
 
 run_configfs() {
-	echo start > /data/usb_bind_in_progress
+	echo start > /tmp/usb_bind_in_progress
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
@@ -211,6 +211,9 @@ run_configfs() {
 	mkdir configs/c.3/strings/0x409
 	echo 0x05c6 > idVendor
 	echo 0x9064 > idProduct
+	if [ -e functions/diag.diag/pid ]; then
+		echo 0x9064 > functions/diag.diag/pid
+	fi
 	echo 239 > bDeviceClass
 	echo 2 > bDeviceSubClass
 	echo 1 > bDeviceProtocol
@@ -236,7 +239,7 @@ run_configfs() {
 	echo 0xA0 > configs/c.1/bmAttributes
 	echo 0xA0 > configs/c.2/bmAttributes
 	echo 0xA0 > configs/c.3/bmAttributes
-	rm -f /data/usb_bind_in_progress
+	rm -f /tmp/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
@@ -277,7 +280,7 @@ case `source /sbin/usb/target` in
 	*sdx20* )
 		run_sdx20 &
 		;;
-	*sdxpoorwills* | *sdxprairie* | *sdxlemur* )
+	*sdxpoorwills* | *sdxprairie* | *sdxlemur* | *sdxnightjar* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;
