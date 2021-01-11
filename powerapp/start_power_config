@@ -310,7 +310,10 @@ case "$1" in
                 echo -n "Starting powerconfig for SDX55: "
                 echo N > /sys/module/lpm_levels/parameters/sleep_disabled
                 echo ondemand > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-                echo compute > /sys/class/devfreq/soc:qcom,cpubw/governor
+                governor=`cat /sys/class/devfreq/soc:qcom,cpubw/governor`
+                if [ "$governor" == "performance" ]; then
+                        echo compute > /sys/class/devfreq/soc:qcom,cpubw/governor
+                fi
 
                 echo mem > /sys/power/autosleep
                 echo 10 > /sys/class/devfreq/soc:qcom,cpubw/polling_interval
