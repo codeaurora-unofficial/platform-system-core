@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2018, The Linux Foundation. All rights reserved.
+# Copyright (c) 2018,2021, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -47,7 +47,11 @@ run_configfs() {
 	echo 0x05c6 > idVendor
 	echo 0x90E0 > idProduct
 	echo "DIAG_UAC2_UVC" > configs/c.1/strings/0x409/configuration
-	ln -s functions/diag.diag configs/c.1/f1
+	if [ -e functions/ffs.diag ]; then
+		ln -s functions/ffs.diag configs/c.1/f1
+	else
+		ln -s functions/diag.diag configs/c.1/f1
+	fi
 	ln -s functions/uac2.0 configs/c.1/f2
 	ln -s functions/uvc.0 configs/c.1/f3
 	rm -f /data/usb_bind_in_progress
