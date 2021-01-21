@@ -376,9 +376,6 @@ enum subproc_mode {
 #define USB_FFS_ADB_IN    USB_FFS_ADB_EP(ep2)
 #endif
 
-/* Differentiating macro for the targets which supports adb non root */
-#define _ALLOW_ADB_NONROOT_
-
 int handle_host_request(char *service, transport_type ttype, char* serial, int reply_fd, asocket *s);
 
 void handle_online(atransport *t);
