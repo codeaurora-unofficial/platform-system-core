@@ -171,7 +171,7 @@ case "$1" in
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
 			;;
-		*sdxpoorwills* | *sdxprairie* | *sdxlemur* )
+		*sdxpoorwills* | *sdxprairie* )
 			if [ -e /dev/mhi_ctrl ]; then
 				echo 901F > /etc/usb/boot_hsusb_comp
 			fi
@@ -324,7 +324,7 @@ case "$1" in
 	udcname=`ls -1 /sys/class/udc | head -n 1`
 	if [ -d /sys/kernel/config/usb_gadget ]; then
 		echo "Starting USB Android Gadget"
-		rm -f /data/usb_bind_in_progress
+		rm -f /tmp/usb_bind_in_progress
 		echo $udcname > /sys/kernel/config/usb_gadget/g1/UDC
 	fi
 	;;
@@ -332,7 +332,7 @@ case "$1" in
   stop)
 	if [ -d /sys/kernel/config/usb_gadget ]; then
 		echo "Stopping USB Android Gadget"
-		echo start > /data/usb_bind_in_progress
+		echo start > /tmp/usb_bind_in_progress
 		echo none > /sys/kernel/config/usb_gadget/g1/UDC
 	fi
         ;;

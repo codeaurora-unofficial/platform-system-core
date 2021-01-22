@@ -103,7 +103,7 @@ run_9650() {
 }
 
 run_configfs() {
-	echo start > /data/usb_bind_in_progress
+	echo start > /tmp/usb_bind_in_progress
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
@@ -127,7 +127,7 @@ run_configfs() {
 	fi
 	ln -s functions/ffs.adb configs/c.1/f2
 	ln -s functions/gsi.rmnet configs/c.1/f3
-	rm -f /data/usb_bind_in_progress
+	rm -f /tmp/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
@@ -149,7 +149,7 @@ case `source /sbin/usb/target` in
 	*9650* )
 		run_9650 &
 		;;
-	*sdxpoorwills* | *sdxprairie* | *sdxlemur* )
+	*sdxpoorwills* | *sdxprairie* | *sdxlemur* | *sdxnightjar* )
 		udcname=`ls -1 /sys/class/udc | head -n 1`
 		run_configfs $udcname &
 		;;

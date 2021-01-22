@@ -26,7 +26,7 @@
 
 # DESCRIPTION: DIAG + ADB + UAC2 + UVC
 
-echo "Switching to composition number 0x90CB"  > /dev/kmsg
+echo "Switching to composition number 0x90CC"  > /dev/kmsg
 
 if [ "$#" -ge 3 ]; then
 	from_adb=$3
@@ -35,7 +35,7 @@ else
 fi
 
 run_configfs() {
-	echo start > /data/usb_bind_in_progress
+	echo start > /tmp/usb_bind_in_progress
 	if [ $from_adb = "n" ]
 	then
 		pkill adbd
@@ -60,7 +60,7 @@ run_configfs() {
 	ln -s functions/ffs.adb configs/c.1/f2
 	ln -s functions/uac2.0 configs/c.1/f3
 	ln -s functions/uvc.0 configs/c.1/f4
-	rm -f /data/usb_bind_in_progress
+	rm -f /tmp/usb_bind_in_progress
 	echo "binding UDC with Gadget..." $1
 	echo $1 > UDC
 	cd /
