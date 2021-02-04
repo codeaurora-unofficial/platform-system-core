@@ -403,6 +403,7 @@ case "$1" in
                     return
                 fi
 
+                echo mem > /sys/power/autosleep
                 #bail out if coresight isn't present
                 if [ ! -d /sys/bus/coresight ]
                 then
